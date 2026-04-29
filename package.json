@@ -5,8 +5,10 @@
   "description": "",
   "main": "./dist/api.js",
   "scripts": {
-    "build": "npx esbuild ./src/* --outdir=./dist/ --platform=node --format=esm --target=es2022 --packages=external",
-    "build:watch": "npm run build -- --watch",
+    "build:lib": "npx esbuild ./src/* --outdir=./dist/ --platform=node --format=esm --target=es2022 --packages=external",
+    "build:lib:watch": "npm run build:lib -- --watch",
+    "build:types": "npx tsc",
+    "build": "npm run build:lib && npm run build:types",
     "test": "node --experimental-strip-types ./test/unit/test.js"
   },
   "repository": {
@@ -19,6 +21,7 @@
   },
   "homepage": "https://github.com/webfuse-com/is-interactive#readme",
   "devDependencies": {
-    "esbuild": "^0.28.0"
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
   }
 }
