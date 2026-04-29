@@ -1,21 +1,24 @@
 {
   "name": "@webfuse-com/is-interactive",
   "version": "1.0.0",
+  "author": "Thassilo M. Schiepanski",
   "description": "",
-  "main": "index.js",
+  "main": "./dist/api.js",
   "scripts": {
+    "build": "npx esbuild ./src/* --outdir=./dist/ --platform=node --format=esm --target=es2022 --packages=external",
+    "build:watch": "npm run build -- --watch",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/webfuse-com/is-interactive.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
   "bugs": {
     "url": "https://github.com/webfuse-com/is-interactive/issues"
   },
-  "homepage": "https://github.com/webfuse-com/is-interactive#readme"
+  "homepage": "https://github.com/webfuse-com/is-interactive#readme",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
 }
