@@ -1,16 +1,22 @@
 export interface InteractivityChecks {
-    checkConnected?: boolean;
-    checkHidden?: boolean;
-    checkInert?: boolean;
-    checkDisabled?: boolean;
-    checkAriaHidden?: boolean;
-    checkStyles?: boolean;
-    checkSize?: boolean;
-    checkInViewport?: boolean;
-    checkOcclusion?: boolean;
+    disconnected: boolean;
+    hidden: boolean;
+    inert: boolean;
+    disabled: boolean;
+    ariaHidden: boolean;
+    invisible: boolean;
+    unclickable: boolean;
+    collapsed: boolean;
+    offViewport: boolean;
+    occluded: boolean;
+}
+
+export interface IsInteractiveOptions {
+    checks?: Partial<InteractivityChecks>;
+    occlusionSamples?: number;
 }
 
 export interface InteractivityResult {
-    interactive: boolean;
-    reason?: string;
+    isInteractive: boolean;
+    reason?: "not-element" | keyof InteractivityChecks;
 }
