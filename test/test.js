@@ -88,6 +88,19 @@ const TESTS = [
         expected: {
             isInteractive: true
         }
+    },
+    {
+        name: "unclickable",
+        expected: {
+            isInteractive: false,
+            reason: "unclickable"
+        }
+    },
+    {
+        name: "unclickable.restore",
+        expected: {
+            isInteractive: true
+        }
     }
 ];
 
