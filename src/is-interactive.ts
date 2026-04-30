@@ -1,4 +1,5 @@
-import { type InteractivityChecks, type IsInteractiveOptions, type InteractivityResult } from "./types";
+import { type InteractivityChecks, type IsInteractiveOptions, type InteractivityResult } from "./types.js";
+import { isElementOccluded } from "./util.occlusion.js";
 
 
 const DISABLEABLE_TAG_NAMES: string[] = [
@@ -12,7 +13,7 @@ const DISABLEABLE_TAG_NAMES: string[] = [
 ];
 
 
-export function isInteractive(element: Element, options: IsInteractiveOptions = {}): InteractivityResult {
+export function isInteractive(element: Element, options: Partial<IsInteractiveOptions> = {}): InteractivityResult {
     if(!element || element.nodeType !== 1) {
         return {
             isInteractive: false,
@@ -20,20 +21,24 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
         };
     }
 
-    const checks: InteractivityChecks = {
-        disconnected: true,
-        hidden: true,
-        inert: true,
-        disabled: true,
-        ariaHidden: true,
-        invisible: true,
-        unclickable: true,
-        collapsed: true,
-        offViewport: true,
-        occluded: true,
+    const optionsWithDefaults: IsInteractiveOptions = {
+        checks: {
+            disconnected: true,
+            hidden: true,
+            inert: true,
+            disabled: true,
+            ariaHidden: true,
+            invisible: true,
+            unclickable: true,
+            collapsed: true,
+            offViewport: true,
+            occluded: true,
 
-        ...(options.checks ?? {})
+            ...(options.checks ?? {})
+        },
+        occlusionSamples: 5
     };
+    const checks: InteractivityChecks = optionsWithDefaults.checks;
 
     if(checks.disconnected) {
         if(!element.isConnected) {
@@ -141,7 +146,7 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
         }
     }
 
-    if(checks.collapsed || checks.offViewport) {
+    if(checks.collapsed || checks.offViewport || checks.occluded) {
         const rect: DOMRect | null = element.getBoundingClientRect();
 
         if(
@@ -171,15 +176,16 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
             }
         }
 
-    }
-
-    if(checks.occluded) {
-        if(false) {
+        if(
+            checks.occluded
+            && isElementOccluded(element, optionsWithDefaults.occlusionSamples)
+        ) {
             return {
                 isInteractive: false,
                 reason: "occluded"
             };
         }
+
     }
 
     return {

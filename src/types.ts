@@ -12,8 +12,8 @@ export interface InteractivityChecks {
 }
 
 export interface IsInteractiveOptions {
-    checks?: Partial<InteractivityChecks>;
-    occlusionSamples?: number;
+    checks: InteractivityChecks;
+    occlusionSamples: number;
 }
 
 export interface InteractivityResult {
