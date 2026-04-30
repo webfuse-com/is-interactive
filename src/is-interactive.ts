@@ -1,5 +1,6 @@
 import { type InteractivityChecks, type IsInteractiveOptions, type InteractivityResult } from "./types";
 
+
 export function isInteractive(element: Element, options: IsInteractiveOptions = {}): InteractivityResult {
     if(!element || element.nodeType !== 1) {
         return {
@@ -24,7 +25,7 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     };
 
     if(checks.disconnected) {
-        if(false) {
+        if(!element.isConnected) {
             return {
                 isInteractive: false,
                 reason: "disconnected"
