@@ -17,7 +17,7 @@ export function isInteractive(element: Element, options: Partial<IsInteractiveOp
     if(!element || element.nodeType !== 1) {
         return {
             isInteractive: false,
-            reason: "not-element"
+            reason: "notElement"
         };
     }
 

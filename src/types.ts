@@ -18,5 +18,5 @@ export interface IsInteractiveOptions {
 
 export interface InteractivityResult {
     isInteractive: boolean;
-    reason?: "not-element" | keyof InteractivityChecks;
+    reason?: "notElement" | keyof InteractivityChecks;
 }
