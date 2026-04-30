@@ -8,7 +8,7 @@ const DISABLEABLE_TAG_NAMES = [
   "OPTION",
   "FIELDSET"
 ];
-function isInteractive(element, options = {}) {
+function checkInteractivity(element, options = {}) {
   if (!element || element.nodeType !== 1) {
     return {
       isInteractive: false,
@@ -141,5 +141,5 @@ function isInteractive(element, options = {}) {
   };
 }
 export {
-  isInteractive
+  checkInteractivity
 };

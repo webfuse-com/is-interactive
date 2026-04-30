@@ -1,2 +1,2 @@
-export { isInteractive } from "./is-interactive.js";
+export { checkInteractivity } from "./is-interactive.js";
 export * from "./types";

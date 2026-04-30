@@ -132,7 +132,7 @@
     "OPTION",
     "FIELDSET"
   ];
-  function isInteractive(element, options = {}) {
+  function checkInteractivity(element, options = {}) {
     if (!element || element.nodeType !== 1) {
       return {
         isInteractive: false,
@@ -266,5 +266,5 @@
   }
 
   // src/api.browser.ts
-  window.isInteractive = isInteractive;
+  window.checkInteractivity = checkInteractivity;
 })();

@@ -1,5 +1,5 @@
-import { isInteractive } from "./is-interactive.js";
+import { checkInteractivity } from "./is-interactive.js";
 export * from "./types";
 export {
-  isInteractive
+  checkInteractivity
 };

@@ -13,7 +13,7 @@ const DISABLEABLE_TAG_NAMES: string[] = [
 ];
 
 
-export function isInteractive(element: Element, options: Partial<IsInteractiveOptions> = {}): InteractivityResult {
+export function checkInteractivity(element: Element, options: Partial<IsInteractiveOptions> = {}): InteractivityResult {
     if(!element || element.nodeType !== 1) {
         return {
             isInteractive: false,
@@ -39,6 +39,8 @@ export function isInteractive(element: Element, options: Partial<IsInteractiveOp
         occlusionSamples: 5
     };
     const checks: InteractivityChecks = optionsWithDefaults.checks;
+
+    // Checks are in ascending order of computational cost!
 
     if(checks.disconnected) {
         if(!element.isConnected) {

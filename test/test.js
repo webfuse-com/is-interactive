@@ -192,7 +192,7 @@ await Promise.all(
 
                 try {
                     return {
-                        result: window.isInteractive(
+                        result: window.checkInteractivity(
                             window[TARGET_ELEMENT_KEY]
                             ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`)
                         )
