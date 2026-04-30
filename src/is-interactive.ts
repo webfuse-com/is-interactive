@@ -109,11 +109,19 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     }
 
     if(checks.invisible) {
-        if(false) {
-            return {
-                isInteractive: false,
-                reason: "invisible"
-            };
+        let currentElement: Element | null = element;
+
+        while(currentElement) {
+            const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+
+            if(style.display === "none" || [ "hidden", "collapse" ].includes(style.visibility)) {
+                return {
+                    isInteractive: false,
+                    reason: "invisible"
+                };
+            }
+
+            currentElement = currentElement.parentElement;
         }
     }
 
