@@ -33,13 +33,26 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
         }
     }
 
-    if(checks.inert) {
+    if(checks.inert || checks.hidden) {
         let currentElement: Element | null = element;
  
         while(currentElement) {
             if(!(currentElement instanceof HTMLElement)) continue;
 
-            if((currentElement as HTMLElement & { inert: boolean })?.inert === true) {
+            if(
+                checks.hidden
+                && currentElement.hidden
+            ) {
+                return {
+                    isInteractive: false,
+                    reason: "hidden"
+                };
+            }
+
+            if(
+                checks.inert
+                && (currentElement as HTMLElement & { inert: boolean })?.inert
+            ) {
                 return {
                     isInteractive: false,
                     reason: "inert"
@@ -47,15 +60,6 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
             }
  
             currentElement = currentElement.parentElement;
-        }
-    }
-
-    if(checks.hidden) {
-        if(false) {
-            return {
-                isInteractive: false,
-                reason: "hidden"
-            };
         }
     }
 
