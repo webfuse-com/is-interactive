@@ -62,6 +62,19 @@ const TESTS = [
             isInteractive: false,
             reason: "invisible"
         }
+    },
+    {
+        name: "occluded.full",
+        expected: {
+            isInteractive: false,
+            reason: "occluded"
+        }
+    },
+    {
+        name: "occluded.partial",
+        expected: {
+            isInteractive: true
+        }
     }
 ];
 
