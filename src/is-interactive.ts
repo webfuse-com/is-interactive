@@ -1,6 +1,17 @@
 import { type InteractivityChecks, type IsInteractiveOptions, type InteractivityResult } from "./types";
 
 
+const DISABLEABLE_TAG_NAMES: string[] = [
+    "BUTTON",
+    "INPUT",
+    "SELECT",
+    "TEXTAREA",
+    "OPTGROUP",
+    "OPTION",
+    "FIELDSET"
+];
+
+
 export function isInteractive(element: Element, options: IsInteractiveOptions = {}): InteractivityResult {
     if(!element || element.nodeType !== 1) {
         return {
@@ -64,7 +75,23 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     }
 
     if(checks.disabled) {
-        if(false) {
+        if(DISABLEABLE_TAG_NAMES.includes(element.tagName) && (element as HTMLInputElement).disabled) {
+            return {
+                isInteractive: false,
+                reason: "disabled"
+            };
+        }
+ 
+        if(element.closest("[aria-disabled=\"true\"]")) {
+            return {
+                isInteractive: false,
+                reason: "disabled"
+            };
+        }
+ 
+        const fieldsetElement: HTMLFieldSetElement | null = element.closest("fieldset[disabled]");
+ 
+        if(fieldsetElement && !element.closest("legend")?.parentElement?.isSameNode(fieldsetElement)) {
             return {
                 isInteractive: false,
                 reason: "disabled"
