@@ -48,6 +48,20 @@ const TESTS = [
             isInteractive: false,
             reason: "inert"
         }
+    },
+    {
+        name: "invisible.display",
+        expected: {
+            isInteractive: false,
+            reason: "invisible"
+        }
+    },
+    {
+        name: "invisible.visibility",
+        expected: {
+            isInteractive: false,
+            reason: "invisible"
+        }
     }
 ];
 
