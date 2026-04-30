@@ -43,6 +43,19 @@ const TESTS = [
         }
     },
     {
+        name: "disabled.fieldset",
+        expected: {
+            isInteractive: false,
+            reason: "disabled"
+        }
+    },
+    {
+        name: "disabled.arbitrary",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
         name: "disconnected",
         expected: {
             isInteractive: false,
@@ -132,6 +145,7 @@ let hasError = false;
 async function runBrowser(url, inPageCallback, inPageCallbackArgs = [], options = {}) {
     const optionsWithDefaults = {
         viewport: [ 800, 600 ],
+        headless: true,
 
         ...options
     };
@@ -143,7 +157,7 @@ async function runBrowser(url, inPageCallback, inPageCallbackArgs = [], options 
             '--disable-web-security'
         ],
         defaultViewport: null,
-        headless: false
+        headless: optionsWithDefaults.headlessSC
     });
 
     const page = (await browser.pages())[0];

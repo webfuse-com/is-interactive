@@ -8,31 +8,28 @@ const DISABLEABLE_TAG_NAMES = [
   "OPTION",
   "FIELDSET"
 ];
-function checkInteractivity(element, options = {}) {
+const MAX_OCCLUSION_SAMPLES = 32;
+function checkInteractivity(element, checks = {}) {
   if (!element || element.nodeType !== 1) {
     return {
       isInteractive: false,
       reason: "notElement"
     };
   }
-  const optionsWithDefaults = {
-    checks: {
-      disconnected: true,
-      hidden: true,
-      inert: true,
-      disabled: true,
-      ariaHidden: true,
-      invisible: true,
-      unclickable: true,
-      collapsed: true,
-      clipped: true,
-      offViewport: true,
-      occluded: true,
-      ...options.checks ?? {}
-    },
-    occlusionSamples: 5
+  checks = {
+    disconnected: true,
+    hidden: true,
+    inert: true,
+    disabled: true,
+    ariaHidden: true,
+    invisible: true,
+    unclickable: true,
+    collapsed: true,
+    clipped: true,
+    offViewport: true,
+    occluded: true,
+    ...checks ?? {}
   };
-  const checks = optionsWithDefaults.checks;
   if (checks.disconnected) {
     if (!element.isConnected) {
       return {
@@ -152,7 +149,9 @@ function checkInteractivity(element, options = {}) {
         };
       }
     }
-    if (checks.occluded && isElementOccluded(element, optionsWithDefaults.occlusionSamples)) {
+    const area = rect.width * rect.height;
+    const occlusionSamples = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
+    if (checks.occluded && isElementOccluded(element, occlusionSamples)) {
       return {
         isInteractive: false,
         reason: "occluded"

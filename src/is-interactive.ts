@@ -1,4 +1,4 @@
-import { type InteractivityChecks, type IsInteractiveOptions, type InteractivityResult } from "./types.js";
+import { type InteractivityChecks, type InteractivityResult } from "./types.js";
 import { isElementOccluded } from "./util.occlusion.js";
 
 
@@ -11,9 +11,10 @@ const DISABLEABLE_TAG_NAMES: string[] = [
     "OPTION",
     "FIELDSET"
 ];
+const MAX_OCCLUSION_SAMPLES: number = 32;
 
 
-export function checkInteractivity(element: Element, options: Partial<IsInteractiveOptions> = {}): InteractivityResult {
+export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
     if(!element || element.nodeType !== 1) {
         return {
             isInteractive: false,
@@ -21,25 +22,21 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
         };
     }
 
-    const optionsWithDefaults: IsInteractiveOptions = {
-        checks: {
-            disconnected: true,
-            hidden: true,
-            inert: true,
-            disabled: true,
-            ariaHidden: true,
-            invisible: true,
-            unclickable: true,
-            collapsed: true,
-            clipped: true,
-            offViewport: true,
-            occluded: true,
+    checks = {
+        disconnected: true,
+        hidden: true,
+        inert: true,
+        disabled: true,
+        ariaHidden: true,
+        invisible: true,
+        unclickable: true,
+        collapsed: true,
+        clipped: true,
+        offViewport: true,
+        occluded: true,
 
-            ...(options.checks ?? {})
-        },
-        occlusionSamples: 5
-    };
-    const checks: InteractivityChecks = optionsWithDefaults.checks;
+        ...(checks ?? {})
+    } as InteractivityChecks;
 
     // Checks are in ascending order of computational cost!
 
@@ -212,9 +209,12 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
             }
         }
 
+        const area: number = rect.width * rect.height;
+        const occlusionSamples: number = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
+
         if(
             checks.occluded
-            && isElementOccluded(element, optionsWithDefaults.occlusionSamples)
+            && isElementOccluded(element, occlusionSamples)
         ) {
             return {
                 isInteractive: false,

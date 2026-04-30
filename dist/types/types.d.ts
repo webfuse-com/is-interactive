@@ -11,10 +11,6 @@ export interface InteractivityChecks {
     offViewport: boolean;
     occluded: boolean;
 }
-export interface IsInteractiveOptions {
-    checks: InteractivityChecks;
-    occlusionSamples: number;
-}
 export interface InteractivityResult {
     isInteractive: boolean;
     reason?: "notElement" | keyof InteractivityChecks;
