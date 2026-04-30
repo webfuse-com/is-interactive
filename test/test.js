@@ -163,8 +163,8 @@ function wrapAssertion(cb, actual = null, expected = null) {
         hasError = true;
 
         console.error(`\x1b[31mAssertion Error${err.message ? ` '${err.message}'` : ""}\x1b[0m`);
-        console.log(`\x1b[2mEXPECTED:\x1b[0m`, expected ?? err.expected);
-        console.log("\x1b[2mACTUAL:\x1b[0m", actual ?? err.actual);
+        // console.log(`\x1b[2mEXPECTED:\x1b[0m`, expected ?? err.expected);
+        // console.log("\x1b[2mACTUAL:\x1b[0m", actual ?? err.actual);
     }
 }
 
@@ -183,18 +183,19 @@ process.on("exit", code => {
 await Promise.all(
     TESTS
         .map(async reference => {
-            console.log(`\x1b[2m• '${reference.name}'\x1b[0m`);
-
             const testFileURL = `file://${
                 join(import.meta.dirname, `${reference.name.replace(/(\.test\.html)?$/i, ".test.html")}`)
             }`;
 
             const returnValue = await runBrowser(testFileURL, async () => {
-                const TARGET_ELEMENT_ID = "TARGET";
+                const TARGET_ELEMENT_KEY = "TARGET";
 
                 try {
                     return {
-                        result: window.isInteractive(document.querySelector(`#${TARGET_ELEMENT_ID}`))
+                        result: window.isInteractive(
+                            window[TARGET_ELEMENT_KEY]
+                            ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`)
+                        )
                     };
                 } catch(err) {
                     return {
@@ -211,6 +212,8 @@ await Promise.all(
                 process.exit(2);
             }
 
+            console.log(`\x1b[2m• '${reference.name}'\x1b[0m`);
+
             const actual = returnValue.result;
 
             if(!("isInteractive" in actual)) throw new SyntaxError(`Invalid test value (actual): ${String(actual)}`);
@@ -218,7 +221,7 @@ await Promise.all(
             assertEqual(
                 actual.isInteractive,
                 reference.expected.isInteractive,
-                `Element is${reference.assertSuccess ? " not" : ""} interactive`
+                `Element is${!actual.isInteractive ? " not" : ""} interactive`
             );
 
             !reference.assertSuccess

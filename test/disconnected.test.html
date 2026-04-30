@@ -1,9 +1,11 @@
 ...
 <section>
     <div>
-        <button id="TARGET" disabled>Click here</button>
+        <button id="TARGET">Click here</button>
         <script>
-            document.querySelector("#TARGET").remove();
+            window.TARGET = document.querySelector("#TARGET");
+
+            window.TARGET.remove();
         </script>
     </div>
 </section>
