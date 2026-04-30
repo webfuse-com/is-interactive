@@ -142,12 +142,15 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     }
 
     if(checks.collapsed) {
-        if(false) {
+        const rect: DOMRect | null = element.getBoundingClientRect();
+
+        if(rect.width <= 0 || rect.height <= 0) {
             return {
                 isInteractive: false,
                 reason: "collapsed"
             };
         }
+
     }
 
     if(checks.offViewport) {
