@@ -149,6 +149,7 @@
         invisible: true,
         unclickable: true,
         collapsed: true,
+        clipped: true,
         offViewport: true,
         occluded: true,
         ...options.checks ?? {}
@@ -167,7 +168,10 @@
     if (checks.inert || checks.hidden) {
       let currentElement = element;
       while (currentElement) {
-        if (!(currentElement instanceof HTMLElement)) continue;
+        if (!(currentElement instanceof HTMLElement)) {
+          currentElement = currentElement.parentElement;
+          continue;
+        }
         if (checks.hidden && currentElement.hidden) {
           return {
             isInteractive: false,
@@ -242,6 +246,25 @@
           isInteractive: false,
           reason: "collapsed"
         };
+      }
+      if (checks.clipped) {
+        const clippingValues = ["hidden", "clip"];
+        let currentElement = element.parentElement;
+        while (currentElement) {
+          const style = getComputedStyle(currentElement);
+          const clipsX = clippingValues.includes(style.overflowX);
+          const clipsY = clippingValues.includes(style.overflowY);
+          if (clipsX || clipsY) {
+            const ancestorRect = currentElement.getBoundingClientRect();
+            if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
+              return {
+                isInteractive: false,
+                reason: "clipped"
+              };
+            }
+          }
+          currentElement = currentElement.parentElement;
+        }
       }
       if (checks.offViewport) {
         const viewportWidth = window.innerWidth || document.documentElement.clientWidth;

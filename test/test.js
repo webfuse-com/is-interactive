@@ -22,6 +22,20 @@ const TESTS = [
         }
     },
     {
+        name: "clipped",
+        expected: {
+            isInteractive: false,
+            reason: "clipped"
+        }
+    },
+    {
+        name: "collapsed",
+        expected: {
+            isInteractive: false,
+            reason: "collapsed"
+        }
+    },
+    {
         name: "disabled",
         expected: {
             isInteractive: false,

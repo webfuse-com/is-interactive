@@ -31,6 +31,7 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
             invisible: true,
             unclickable: true,
             collapsed: true,
+            clipped: true,
             offViewport: true,
             occluded: true,
 
@@ -55,7 +56,11 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
         let currentElement: Element | null = element;
  
         while(currentElement) {
-            if(!(currentElement instanceof HTMLElement)) continue;
+            if(!(currentElement instanceof HTMLElement)) {
+                currentElement = currentElement.parentElement;
+
+                continue;
+            }
 
             if(
                 checks.hidden
@@ -159,6 +164,35 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
                 isInteractive: false,
                 reason: "collapsed"
             };
+        }
+
+        if(checks.clipped) {
+            const clippingValues: string[] = [ "hidden", "clip" ];
+ 
+            let currentElement: Element | null = element.parentElement;
+ 
+            while(currentElement) {
+                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+ 
+                const clipsX: boolean = clippingValues.includes(style.overflowX);
+                const clipsY: boolean = clippingValues.includes(style.overflowY);
+ 
+                if(clipsX || clipsY) {
+                    const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+ 
+                    if(
+                           (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom))
+                        || (clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right))
+                    ) {
+                        return {
+                            isInteractive: false,
+                            reason: "clipped"
+                        };
+                    }
+                }
+ 
+                currentElement = currentElement.parentElement;
+            }
         }
 
         if(checks.offViewport) {

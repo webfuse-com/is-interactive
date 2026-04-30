@@ -7,6 +7,7 @@ export interface InteractivityChecks {
     invisible: boolean;
     unclickable: boolean;
     collapsed: boolean;
+    clipped: boolean;
     offViewport: boolean;
     occluded: boolean;
 }
