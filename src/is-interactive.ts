@@ -100,7 +100,7 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     }
 
     if(checks.ariaHidden) {
-        if(false) {
+        if(element.closest("[aria-hidden=\"true\"]")) {
             return {
                 isInteractive: false,
                 reason: "ariaHidden"
