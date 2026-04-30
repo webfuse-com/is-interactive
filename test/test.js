@@ -41,6 +41,13 @@ const TESTS = [
             isInteractive: false,
             reason: "hidden"
         }
+    },
+    {
+        name: "inert",
+        expected: {
+            isInteractive: false,
+            reason: "inert"
+        }
     }
 ];
 
