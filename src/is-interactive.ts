@@ -34,11 +34,19 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
     }
 
     if(checks.inert) {
-        if(false) {
-            return {
-                isInteractive: false,
-                reason: "inert"
-            };
+        let currentElement: Element | null = element;
+ 
+        while(currentElement) {
+            if(!(currentElement instanceof HTMLElement)) continue;
+
+            if((currentElement as HTMLElement & { inert: boolean })?.inert === true) {
+                return {
+                    isInteractive: false,
+                    reason: "inert"
+                };
+            }
+ 
+            currentElement = currentElement.parentElement;
         }
     }
 
