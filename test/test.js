@@ -75,6 +75,19 @@ const TESTS = [
         expected: {
             isInteractive: true
         }
+    },
+    {
+        name: "offViewport.full",
+        expected: {
+            isInteractive: false,
+            reason: "offViewport"
+        }
+    },
+    {
+        name: "offViewport.partial",
+        expected: {
+            isInteractive: true
+        }
     }
 ];
 
