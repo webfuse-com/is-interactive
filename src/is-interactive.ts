@@ -136,7 +136,7 @@ export function checkInteractivity(element: Element, options: Partial<IsInteract
 
             if(
                 checks.invisible
-                && (style.display === "none" || invisibilityValues.includes(style.visibility))
+                && (style.display === "none" || parseFloat(style.opacity) === 0 || invisibilityValues.includes(style.visibility))
             ) {
                 return {
                     isInteractive: false,

@@ -57,6 +57,13 @@ const TESTS = [
         }
     },
     {
+        name: "invisible.opacity",
+        expected: {
+            isInteractive: false,
+            reason: "invisible"
+        }
+    },
+    {
         name: "invisible.visibility",
         expected: {
             isInteractive: false,

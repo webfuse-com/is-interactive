@@ -226,7 +226,7 @@
       let currentElement = element;
       while (currentElement) {
         const style = getComputedStyle(currentElement);
-        if (checks.invisible && (style.display === "none" || invisibilityValues.includes(style.visibility))) {
+        if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || invisibilityValues.includes(style.visibility))) {
           return {
             isInteractive: false,
             reason: "invisible"
