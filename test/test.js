@@ -1,13 +1,62 @@
+import { readFile } from "fs/promises";
 import { join } from "path";
-import { deepEqual as assertEqual, ok } from "assert";
+import { deepEqual } from "assert";
+
+import puppeteer from "puppeteer";
 
 
+const HEADLESS = !process.argv.slice(2).includes("--no-headless");
 const TESTS = [
+    {
+        name: "not-element",
+        expected: {
+            isInteractive: false,
+            reason: "not-element"
+        }
+    }
     // TODO: List test file names
 ];
 
 
-function wrapAssertion(cb, actual = null, expected = null, relationHint = null) {
+async function runBrowser(url, inPageCallback, inPageCallbackArgs = [], options = {}) {
+    const optionsWithDefaults = {
+        viewport: [ 800, 600 ],
+
+        ...options
+    };
+
+    const browser = await puppeteer.launch({
+        args: [
+            `--window-size=${optionsWithDefaults.viewport[0]},${optionsWithDefaults.viewport[1]}`,
+            '--allow-file-access-from-files',
+            '--disable-web-security'
+        ],
+        defaultViewport: null,
+        headless: false
+    });
+
+    const page = (await browser.pages())[0];
+
+    await page.evaluateOnNewDocument(
+        (await readFile(join(import.meta.dirname, "../dist/api.browser.js"))).toString()
+    );
+
+    return new Promise(async resolve => {
+        page.on("domcontentloaded", async () => {
+            const result = await page.evaluate(inPageCallback, ...inPageCallbackArgs);
+
+            resolve(result);
+
+            setTimeout(() => browser.close(), 2000);
+        });
+
+        await page.goto(url, {
+            waitUntil: "load"
+        });
+    });
+}
+
+function wrapAssertion(cb, actual = null, expected = null) {
     try {
         cb();
     } catch(err) {
@@ -18,20 +67,15 @@ function wrapAssertion(cb, actual = null, expected = null, relationHint = null) 
         }
 
         console.error(`\x1b[31mAssertion Error${err.message ? ` '${err.message}'` : ""}\x1b[0m`);
-        console.log(`\x1b[2mEXPECTED${relationHint ? ` (${relationHint})` : ""}:\x1b[0m`, expected ?? err.expected);
+        console.log(`\x1b[2mEXPECTED:\x1b[0m`, expected ?? err.expected);
         console.log("\x1b[2mACTUAL:\x1b[0m", actual ?? err.actual);
 
         process.exit(2);
     }
 }
 
-
-global.assertEqual = function(a, b, message) {
-    wrapAssertion(() => assertEqual(a, b, message));
-}
-
-global.assertIn = function(a, b, message) {
-    wrapAssertion(() => ok(b.includes(a), message), a, b, "in");
+function assertEqual(a, b, message) {
+    wrapAssertion(() => deepEqual(a, b, message));
 }
 
 
@@ -44,7 +88,48 @@ process.on("exit", code => {
 
 TESTS
     .forEach(async reference => {
-        await import(
-            join(import.meta.dirname, reference.replace(/(\.test\.js)?$/i, ".test.js"))
+        console.log(`\x1b[2m• '${reference.name}'\x1b[0m`);
+
+        const testFileURL = `file://${
+            join(import.meta.dirname, `${reference.name.replace(/(\.test\.html)?$/i, ".test.html")}`)
+        }`;
+
+        const returnValue = await runBrowser(testFileURL, async () => {
+            const TARGET_ELEMENT_ID = "TARGET";
+
+            try {
+                return {
+                    result: window.isInteractive(document.querySelector(`#${TARGET_ELEMENT_ID}`))
+                };
+            } catch(err) {
+                return {
+                    error: err?.message || String(err)
+                };
+            }
+        }, [], {
+            headless: HEADLESS
+        });
+
+        if(returnValue.error) {
+            console.error(`\x1b[31m${returnValue.error}\x1b[0m`);
+
+            process.exit(2);
+        }
+
+        const actual = returnValue.result;
+
+        if(!("isInteractive" in actual)) throw new SyntaxError(`Invalid test value (actual): ${String(actual)}`);
+
+        assertEqual(
+            actual.isInteractive,
+            reference.expected.isInteractive,
+            `Element is${reference.assertSuccess ? " not" : ""} interactive`
         );
+
+        !reference.assertSuccess
+            && assertEqual(
+                actual.reason,
+                reference.expected.reason,
+                `Invalid failure reason: '${actual.reason}'`
+            );
     });
