@@ -141,25 +141,36 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
         }
     }
 
-    if(checks.collapsed) {
+    if(checks.collapsed || checks.offViewport) {
         const rect: DOMRect | null = element.getBoundingClientRect();
 
-        if(rect.width <= 0 || rect.height <= 0) {
+        if(
+            checks.collapsed
+            && (rect.width <= 0 || rect.height <= 0)
+        ) {
             return {
                 isInteractive: false,
                 reason: "collapsed"
             };
         }
 
-    }
-
-    if(checks.offViewport) {
-        if(false) {
-            return {
-                isInteractive: false,
-                reason: "offViewport"
-            };
+        if(checks.offViewport) {
+            const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
+            const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
+ 
+            if(
+                   (rect.bottom <= 0)
+                || (rect.right <= 0)
+                || (rect.left >= viewportWidth)
+                || (rect.top >= viewportHeight)
+            ) {
+                return {
+                    isInteractive: false,
+                    reason: "offViewport"
+                };
+            }
         }
+
     }
 
     if(checks.occluded) {
