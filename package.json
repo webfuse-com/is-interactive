@@ -2,26 +2,28 @@
   "name": "@webfuse-com/is-interactive",
   "version": "1.0.0",
   "author": "Thassilo M. Schiepanski",
+  "type": "module",
   "description": "",
   "main": "./dist/api.js",
   "scripts": {
     "build:lib": "npx esbuild ./src/* --outdir=./dist/ --platform=node --format=esm --target=es2022 --packages=external",
     "build:lib:watch": "npm run build:lib -- --watch",
+    "build:browser": "npx esbuild ./src/api.browser.ts --bundle --outfile=./dist/api.browser.js",
     "build:types": "npx tsc",
-    "build": "npm run build:lib && npm run build:types",
-    "test": "node --experimental-strip-types ./test/unit/test.js"
+    "build": "npm run build:lib && npm run build:types && npm run build:browser",
+    "test": "node --experimental-strip-types ./test/test.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/webfuse-com/is-interactive.git"
   },
-  "type": "commonjs",
   "bugs": {
     "url": "https://github.com/webfuse-com/is-interactive/issues"
   },
   "homepage": "https://github.com/webfuse-com/is-interactive#readme",
   "devDependencies": {
     "esbuild": "^0.28.0",
+    "puppeteer": "^24.42.0",
     "typescript": "^6.0.3"
   }
 }
