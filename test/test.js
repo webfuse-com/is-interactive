@@ -34,6 +34,13 @@ const TESTS = [
             isInteractive: false,
             reason: "disconnected"
         }
+    },
+    {
+        name: "hidden",
+        expected: {
+            isInteractive: false,
+            reason: "hidden"
+        }
     }
 ];
 
