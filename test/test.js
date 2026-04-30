@@ -20,8 +20,14 @@ const TESTS = [
             isInteractive: false,
             reason: "ariaHidden"
         }
+    },
+    {
+        name: "disabled",
+        expected: {
+            isInteractive: false,
+            reason: "disabled"
+        }
     }
-    // TODO: List test file names
 ];
 
 
