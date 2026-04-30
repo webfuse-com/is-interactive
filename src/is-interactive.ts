@@ -108,13 +108,29 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
         }
     }
 
-    if(checks.invisible) {
+    if(checks.invisible || checks.unclickable) {
+        if(checks.unclickable) {
+            const style: CSSStyleDeclaration = getComputedStyle(element);
+
+            if(style.pointerEvents === "none") {
+                return {
+                    isInteractive: false,
+                    reason: "unclickable"
+                };
+            }
+        }
+
+        const invisibilityValues: string[] = [ "hidden", "collapse" ];
+
         let currentElement: Element | null = element;
 
         while(currentElement) {
             const style: CSSStyleDeclaration = getComputedStyle(currentElement);
 
-            if(style.display === "none" || [ "hidden", "collapse" ].includes(style.visibility)) {
+            if(
+                checks.invisible
+                && (style.display === "none" || invisibilityValues.includes(style.visibility))
+            ) {
                 return {
                     isInteractive: false,
                     reason: "invisible"
@@ -122,15 +138,6 @@ export function isInteractive(element: Element, options: IsInteractiveOptions = 
             }
 
             currentElement = currentElement.parentElement;
-        }
-    }
-
-    if(checks.unclickable) {
-        if(false) {
-            return {
-                isInteractive: false,
-                reason: "unclickable"
-            };
         }
     }
 
