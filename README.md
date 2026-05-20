@@ -6,39 +6,69 @@ Versatile DOM element interactivity checks.
 npm install webfuse-com/is-interactive
 ```
 
+### Example
+
 ``` js
-import { checkInteractivity } from "@webfuse-com/is-interactive";
+import { checkInteractivity, filterInteractive } from "@webfuse-com/is-interactive";
 
-const agentClick = selector => {
-    const button = document.querySelector(selector);
+// Check if an element is interactive:
+const click = targetElement => {
+  const { isInteractive } = checkInteractivity(targetElement, {
+    invisible: false  // disables invisible check
+  });
 
-    const { isInteractive } = checkInteractivity(button, {
-        offViewport: false  // disables off-viewport check
-    });
+  if(!isInteractive) return;
 
-    isInteractive
-        ? automation.click(button)
-        // Retry in next agent iteration
-        : queue(() => agentClick(selector));
+  automation.click(button);
+};
+
+// Create a DOM snapshot (weakly corresponding to the GUI):
+const surfaceDOMSnapshot = selector => {
+  return filterInteractive(document, {
+    offViewport: true
+  }).outerHTML;
 };
 ```
 
 ### API
 
 ``` ts
-function checkInteractivity(element: Element, checks?: {
-    // Toggle checks to perform (default: all enabled)
-    disconnected: boolean;
-    hidden: boolean;
-    inert: boolean;
-    disabled: boolean;
-    ariaHidden: boolean;
-    invisible: boolean;
-    unclickable: boolean;
-    collapsed: boolean;
-    offViewport: boolean;
-    occluded: boolean;
-}): {
-    isInteractive: boolean;
-    reason?: "disabled" | "hidden" | "occluded" | '...'
+// Toggle checks to perform (default: all enabled, except 'offViewport')
+interface InteractivityChecks {
+  disconnected: boolean;
+  hidden: boolean;
+  inert: boolean;
+  disabled: boolean;
+  ariaHidden: boolean;
+  invisible: boolean;
+  unclickable: boolean;
+  collapsed: boolean;
+  clipped: boolean;
+  occluded: boolean;
+  offViewport: boolean;
+}
+
+/**
+ * Check whether an element is interactive.
+ */
+function checkInteractivity(element: Element, checks?: InteractivityChecks): {
+  isInteractive: boolean;
+  reason?:
+    | "disconnected"
+    | "hidden"
+    | "inert"
+    | "disabled"
+    | "ariaHidden"
+    | "invisible"
+    | "unclickable"
+    | "collapsed"
+    | "occluded"
+    | "offViewport";
+}
+
+/**
+ * Filter a DOM (sub)tree for interactive elements.
+ * Create a 'surface'-only DOM.
+ */
+function filterInteractive(dom: Document | Element, checks?: InteractivityChecks): Element
 ```

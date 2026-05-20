@@ -26,8 +26,8 @@ function checkInteractivity(element, checks = {}) {
     unclickable: true,
     collapsed: true,
     clipped: true,
-    offViewport: true,
     occluded: true,
+    offViewport: false,
     ...checks ?? {}
   };
   if (checks.disconnected) {

@@ -11,31 +11,33 @@
     const restoreCbs = [];
     let currentElement = element.parentElement;
     while (currentElement) {
-      if (!(currentElement instanceof HTMLElement) || (currentElement.scrollHeight > currentElement.clientHeight || currentElement.scrollWidth > currentElement.clientWidth)) continue;
-      const previousLeft = currentElement.scrollLeft;
-      const previousTop = currentElement.scrollTop;
-      const ancestorRect = currentElement.getBoundingClientRect();
+      const el = currentElement;
+      currentElement = currentElement.parentElement;
+      if (!(el instanceof HTMLElement)) continue;
+      const isScrollable = el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth;
+      if (!isScrollable) continue;
+      const previousLeft = el.scrollLeft;
+      const previousTop = el.scrollTop;
+      const ancestorRect = el.getBoundingClientRect();
       const elementRect2 = element.getBoundingClientRect();
       const deltaX2 = computeScrollDelta(
         elementRect2.left - ancestorRect.left,
         elementRect2.right - ancestorRect.left,
-        currentElement.clientWidth
+        el.clientWidth
       );
       const deltaY2 = computeScrollDelta(
         elementRect2.top - ancestorRect.top,
         elementRect2.bottom - ancestorRect.top,
-        currentElement.clientHeight
+        el.clientHeight
       );
-      const ancestorElement = currentElement;
       if (deltaX2 !== 0 || deltaY2 !== 0) {
-        currentElement.scrollLeft = previousLeft + deltaX2;
-        currentElement.scrollTop = previousTop + deltaY2;
+        el.scrollLeft = previousLeft + deltaX2;
+        el.scrollTop = previousTop + deltaY2;
         restoreCbs.push(() => {
-          ancestorElement.scrollLeft = previousLeft;
-          ancestorElement.scrollTop = previousTop;
+          el.scrollLeft = previousLeft;
+          el.scrollTop = previousTop;
         });
       }
-      currentElement = currentElement.parentElement;
     }
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
@@ -122,7 +124,7 @@
     return isOccluded;
   }
 
-  // src/is-interactive.ts
+  // src/check-interactivity.ts
   var DISABLEABLE_TAG_NAMES = [
     "BUTTON",
     "INPUT",
@@ -134,7 +136,7 @@
   ];
   var MAX_OCCLUSION_SAMPLES = 32;
   function checkInteractivity(element, checks = {}) {
-    if (!element || element.nodeType !== 1) {
+    if (element?.nodeType !== 1) {
       return {
         isInteractive: false,
         reason: "notElement"
@@ -150,8 +152,8 @@
       unclickable: true,
       collapsed: true,
       clipped: true,
-      offViewport: true,
       occluded: true,
+      offViewport: false,
       ...checks ?? {}
     };
     if (checks.disconnected) {
@@ -236,7 +238,7 @@
         currentElement = currentElement.parentElement;
       }
     }
-    if (checks.collapsed || checks.offViewport || checks.occluded) {
+    if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
       const rect = element.getBoundingClientRect();
       if (checks.collapsed && (rect.width <= 0 || rect.height <= 0)) {
         return {
@@ -287,6 +289,60 @@
     };
   }
 
+  // src/filter-interactive.ts
+  var CASCADING_NON_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
+    "disconnected",
+    "hidden",
+    "inert",
+    "ariaHidden",
+    "invisible"
+  ]);
+  function markDOM(live, virtual, marks, checks) {
+    const result = checkInteractivity(live, checks);
+    marks.set(virtual, result);
+    if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) return;
+    let liveChild = live.firstElementChild;
+    let virtualChild = virtual.firstElementChild;
+    while (liveChild && virtualChild) {
+      markDOM(liveChild, virtualChild, marks, checks);
+      liveChild = liveChild.nextElementSibling;
+      virtualChild = virtualChild.nextElementSibling;
+    }
+  }
+  function restructureDOM(node, isRoot, marks) {
+    const children = [];
+    for (let child = node.firstElementChild; child; child = child.nextElementSibling) {
+      children.push(child);
+    }
+    for (const child of children) {
+      restructureDOM(child, false, marks);
+    }
+    if (isRoot) return;
+    const result = marks.get(node) ?? { isInteractive: false };
+    if (result.isInteractive) return;
+    const parent = node.parentElement;
+    if (!parent) return;
+    while (node.firstElementChild) {
+      parent.insertBefore(node.firstElementChild, node);
+    }
+    parent.removeChild(node);
+  }
+  function filterInteractive(dom, checks) {
+    checks = {
+      occluded: false,
+      ...checks
+    };
+    const liveRoot = dom instanceof Document ? dom.documentElement : dom;
+    const virtualRoot = liveRoot.cloneNode(true);
+    const marks = /* @__PURE__ */ new Map();
+    markDOM(liveRoot, virtualRoot, marks, checks);
+    restructureDOM(virtualRoot, true, marks);
+    return virtualRoot;
+  }
+
   // src/api.browser.ts
-  window.checkInteractivity = checkInteractivity;
+  window.IsInteractive = {
+    checkInteractivity,
+    filterInteractive
+  };
 })();
