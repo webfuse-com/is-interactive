@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="urf-8">
+        <title>Test</title>
+    </head>
+    <body>
+        <header>
+            <section H="ariaHidden">
+                <div role="toolbar" aria-hidden="true">
+                    <div>
+                        <button>Click here</button>
+                    </div>
+                </div>
+            </section>
+        </header>
+        <main>
+            <h1>Test</h1>
+            <div id="TARGET">
+                <section H="disabled">
+                    <div disabled>
+                        <button>Click here</button>
+                    </div>
+                    <fieldset disabled>
+                        <button>Click here</button>
+                    </fieldset>
+                    <div>
+                        <button disabled>Click here</button>
+                    </div>
+                </section>
+                <section H="disconnected">
+                    <div>
+                        <button id="to-disconnect">Click here</button>
+                        <script>
+                            document.querySelector("#to-disconnect").remove();
+                        </script>
+                    </div>
+                </section>
+            </div>
+            <section H="unclickable">
+                <div>
+                    <button style="pointer-events: none;">Click here</button>
+                </div>
+                <!-- recovered -->
+                <div style="pointer-events: none;">
+                    <button style="pointer-events: auto;">
+                        Click here
+                        <span style="pointer-events: none;">!</span>
+                    </button>
+                </div>
+            </section>
+        </main>  
+        <footer>
+            <span>2026</span>
+        </footer>
+    </body>
+</html>
