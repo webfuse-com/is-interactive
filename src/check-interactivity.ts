@@ -15,7 +15,7 @@ const MAX_OCCLUSION_SAMPLES: number = 32;
 
 
 export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
-    if(!element || element.nodeType !== 1) {
+    if(element?.nodeType !== 1) {
         return {
             isInteractive: false,
             reason: "notElement"
@@ -32,8 +32,8 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         unclickable: true,
         collapsed: true,
         clipped: true,
-        offViewport: true,
         occluded: true,
+        offViewport: false,
 
         ...(checks ?? {})
     } as InteractivityChecks;
@@ -150,7 +150,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
     }
 
-    if(checks.collapsed || checks.offViewport || checks.occluded) {
+    if(checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
         const rect: DOMRect | null = element.getBoundingClientRect();
 
         if(

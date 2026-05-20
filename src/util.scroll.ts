@@ -21,45 +21,41 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
 
     let currentElement: Element | null = element.parentElement;
 
-    while(currentElement) {
-        if(
-            !(currentElement instanceof HTMLElement)
-            || (
-                (currentElement.scrollHeight > currentElement.clientHeight)
-                || (currentElement.scrollWidth > currentElement.clientWidth)
-            )
-        ) continue;
+    while (currentElement) {
+        const el = currentElement;
+        currentElement = currentElement.parentElement; // advance FIRST
 
-        const previousLeft: number = currentElement.scrollLeft;
-        const previousTop: number = currentElement.scrollTop;
-        const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
-        const elementRect: DOMRect = element.getBoundingClientRect();
+        if (!(el instanceof HTMLElement)) continue;
 
-        const deltaX: number = computeScrollDelta(
-            elementRect.left - ancestorRect.left,
+        const isScrollable =
+            el.scrollHeight > el.clientHeight ||
+            el.scrollWidth  > el.clientWidth;
+        if (!isScrollable) continue;
+
+        const previousLeft = el.scrollLeft;
+        const previousTop  = el.scrollTop;
+        const ancestorRect = el.getBoundingClientRect();
+        const elementRect  = element.getBoundingClientRect();
+
+        const deltaX = computeScrollDelta(
+            elementRect.left  - ancestorRect.left,
             elementRect.right - ancestorRect.left,
-            currentElement.clientWidth
+            el.clientWidth
         );
-        const deltaY: number = computeScrollDelta(
-            elementRect.top - ancestorRect.top,
+        const deltaY = computeScrollDelta(
+            elementRect.top    - ancestorRect.top,
             elementRect.bottom - ancestorRect.top,
-            currentElement.clientHeight
+            el.clientHeight
         );
 
-        const ancestorElement: HTMLElement = currentElement;
-
-        if(deltaX !== 0 || deltaY !== 0) {
-            currentElement.scrollLeft = previousLeft + deltaX;
-            currentElement.scrollTop = previousTop + deltaY;
-
-            restoreCbs
-                .push((): void => {
-                    ancestorElement.scrollLeft = previousLeft;
-                    ancestorElement.scrollTop = previousTop;
-                });
+        if (deltaX !== 0 || deltaY !== 0) {
+            el.scrollLeft = previousLeft + deltaX;
+            el.scrollTop  = previousTop  + deltaY;
+            restoreCbs.push(() => {
+                el.scrollLeft = previousLeft;
+                el.scrollTop  = previousTop;
+            });
         }
-
-        currentElement = currentElement.parentElement;
     }
 
     // window-level:

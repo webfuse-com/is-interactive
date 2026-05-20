@@ -1,11 +1,18 @@
-import { checkInteractivity } from "./is-interactive.js";
+import { checkInteractivity } from "./check-interactivity.js";
+import { filterInteractive } from "./filter-interactive.js";
 
 
 declare global {
     interface Window {
-        checkInteractivity: typeof checkInteractivity;
+        IsInteractive: {
+            checkInteractivity: typeof checkInteractivity;
+            filterInteractive: typeof filterInteractive;
+        };
     }
 }
 
 
-window.checkInteractivity = checkInteractivity;
+window.IsInteractive = {
+    checkInteractivity,
+    filterInteractive
+};

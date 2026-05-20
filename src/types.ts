@@ -8,8 +8,8 @@ export interface InteractivityChecks {
     unclickable: boolean;
     collapsed: boolean;
     clipped: boolean;
-    offViewport: boolean;
     occluded: boolean;
+    offViewport: boolean;
 }
 
 export interface InteractivityResult {
