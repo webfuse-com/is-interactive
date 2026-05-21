@@ -160,3 +160,21 @@ pre {
 .error {
     color: var(--color-erro);
 }
+
+@media (max-width: 540px) {
+    body {
+        flex-direction: column;
+    }
+
+    .panel#page {
+        height: 50vh;
+    }
+
+    .panel#controls {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space);
+        padding: var(--space);
+        width: 100%;
+    }
+}
