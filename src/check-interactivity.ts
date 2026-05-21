@@ -209,17 +209,16 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             }
         }
 
-        const area: number = rect.width * rect.height;
-        const occlusionSamples: number = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
+        if(checks.occluded) {
+            const area: number = rect.width * rect.height;
+            const occlusionSamples: number = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
 
-        if(
-            checks.occluded
-            && isElementOccluded(element, occlusionSamples)
-        ) {
-            return {
-                isInteractive: false,
-                reason: "occluded"
-            };
+            if(isElementOccluded(element, occlusionSamples)) {
+                return {
+                    isInteractive: false,
+                    reason: "occluded"
+                };
+            }
         }
 
     }

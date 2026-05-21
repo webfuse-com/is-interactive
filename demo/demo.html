@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Is Interactive?</title>
+        <link rel="stylesheet" href="./demo.css">
+        <script src="../dist/api.browser.js"></script>
+    </head>
+    <body>
+        <!-- Example page -->
+        <section class="panel" id="page">
+            <demo-page>
+                <template shadowrootmode="open">
+                    <link rel="stylesheet" href="./demo.page.css">
+                    <header>
+                        <h1>DEMO</h1>
+                        <p>
+                            Add elements – check interactivity!
+                        </p>
+                    </header>
+                    <main>
+                        <!-- Dynamically appended -->
+                    </main>
+                </template>
+            </demo-page>
+            <script>
+                customElements.define("demo-page", class extends HTMLElement {});
+            </script>
+        </section>
+        <!-- Interactive controls -->
+        <section class="panel" id="controls">
+            <textarea
+                id="controls-css"
+                placeholder="position: absolute;&#10;left: -1000px;"
+                value="margin-top: 200vh;&#10;width: 100px;&#10;height: 100px;"
+            ></textarea>
+            <button onclick="DEMO.addElement()">
+                ADD ELEMENT
+            </button>
+            <div id="controls-ids"></div>
+            <hr>
+            <div style="text-align: center;">
+                Target: &hairsp; <input id="controls-id" placeholder="#1">
+            </div>
+            <button onclick="DEMO.checkInteractivity()">
+                <tt>checkInteractivity()</tt>
+            </button>
+            <pre id="controls-result-checkInteractivity"></pre>
+            <hr>
+            <button onclick="DEMO.filterInteractive()">
+                <tt>filterInteractive()</tt>
+            </button>
+            <span id="controls-result-filterInteractive"></span>
+            <hr>
+            <!-- Check toggles -->
+            <ul>
+                <li>
+                    <input name="disconnected" type="checkbox" onchange="DEMO.toggleCheck('disconnected')" checked>
+                    <label>disconnected</label>
+                </li>
+                <li>
+                    <input name="hidden" type="checkbox" onchange="DEMO.toggleCheck('hidden')" checked>
+                    <label>hidden</label>
+                </li>
+                <li>
+                    <input name="inert" type="checkbox" onchange="DEMO.toggleCheck('inert')" checked>
+                    <label>inert</label>
+                </li>
+                <li>
+                    <input name="disabled" type="checkbox" onchange="DEMO.toggleCheck('disabled')" checked>
+                    <label>disabled</label>
+                </li>
+                <li>
+                    <input name="ariaHidden" type="checkbox" onchange="DEMO.toggleCheck('ariaHidden')" checked>
+                    <label>ariaHidden</label>
+                </li>
+                <li>
+                    <input name="invisible" type="checkbox" onchange="DEMO.toggleCheck('invisible')" checked>
+                    <label>invisible</label>
+                </li>
+                <li>
+                    <input name="unclickable" type="checkbox" onchange="DEMO.toggleCheck('unclickable')" checked>
+                    <label>unclickable</label>
+                </li>
+                <li>
+                    <input name="collapsed" type="checkbox" onchange="DEMO.toggleCheck('collapsed')" checked>
+                    <label>collapsed</label>
+                </li>
+                <li>
+                    <input name="clipped" type="checkbox" onchange="DEMO.toggleCheck('clipped')" checked>
+                    <label>clipped</label>
+                </li>
+                <li>
+                    <input name="occluded" type="checkbox" onchange="DEMO.toggleCheck('occluded')" checked>
+                    <label>occluded</label>
+                </li>
+                <li>
+                    <input name="offViewport" type="checkbox" onchange="DEMO.toggleCheck('offViewport')" checked>
+                    <label>offViewport</label>
+                </li>
+            </ul>
+        </section>
+        <script src="./demo.js"></script>
+    </body>
+</html>

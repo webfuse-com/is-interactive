@@ -11,7 +11,9 @@
     "build:browser": "npx esbuild ./src/api.browser.ts --bundle --outfile=./dist/api.browser.js",
     "build:types": "npx tsc",
     "build": "npm run build:lib && npm run build:types && npm run build:browser",
-    "test": "node --experimental-strip-types ./test/test.js"
+    "test:checkInteractivity": "node ./test/checkInteractivity.test.js",
+    "test:filterInteractive": "node ./test/filterInteractive.test.js",
+    "test": "npm run test:checkInteractivity && npm run test:filterInteractive"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,43 @@
+:host {
+    --space: 1rem;
+
+    --color-bg: #F1FDFD;
+    --color-bg--mute: #E6F7F5;
+    --color-fg: #092020;
+
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    overflow: scroll;
+}
+
+header {
+    padding: var(--space);
+    background-color: var(--color-bg--mute);
+}
+
+main {
+    padding: var(--space);
+}
+
+h1 {
+    margin: 0;
+}
+
+.highlight {
+    box-shadow: 0 0 1rem -0.125rem var(--color-primary);
+
+    animation-name: highlight;
+    animation-duration: 800ms;
+    animation-iteration-count: infinite;
+}
+
+@keyframes highlight {
+    0%, 100% {  
+        transform: scale(1);
+        filter: opacity(1)
+    }
+    50% {
+        transform: scale(1.25);
+        filter: opacity(0.75)
+    }
+}
