@@ -8,6 +8,15 @@ function computeScrollDelta(near: number, far: number, viewport: number): number
     return 0;
 }
 
+function resolveParent(node: Element): Element | null {
+    if(node.parentElement) return node.parentElement;
+
+    const root = node.getRootNode();
+
+    return (root instanceof ShadowRoot)
+        ? root.host
+        : null;
+}
 
 /**
  * Scrolls an element into view by adjusting every scrollable ancestor the minimum amount.
@@ -19,46 +28,51 @@ function computeScrollDelta(near: number, far: number, viewport: number): number
 export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
     const restoreCbs: (() => void)[] = [];
 
-    let currentElement: Element | null = element.parentElement;
+    let nextElement: Element | null = resolveParent(element);
 
-    while (currentElement) {
-        const el = currentElement;
-        currentElement = currentElement.parentElement; // advance FIRST
+    while (nextElement) {
+        const currentElement: Element = nextElement;
 
-        if (!(el instanceof HTMLElement)) continue;
+        nextElement = resolveParent(currentElement);
 
-        const isScrollable =
-            el.scrollHeight > el.clientHeight ||
-            el.scrollWidth  > el.clientWidth;
-        if (!isScrollable) continue;
+        if(!(currentElement instanceof HTMLElement)) continue;
 
-        const previousLeft = el.scrollLeft;
-        const previousTop  = el.scrollTop;
-        const ancestorRect = el.getBoundingClientRect();
-        const elementRect  = element.getBoundingClientRect();
+        const isScrollable = (
+               (currentElement.scrollHeight > currentElement.clientHeight)
+            || (currentElement.scrollWidth  > currentElement.clientWidth)
+        );
+        if(!isScrollable) continue;
+
+        const previousLeft: number = currentElement.scrollLeft;
+        const previousTop: number = currentElement.scrollTop;
+
+        const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+        const elementRect: DOMRect = element.getBoundingClientRect();
 
         const deltaX = computeScrollDelta(
-            elementRect.left  - ancestorRect.left,
+            elementRect.left - ancestorRect.left,
             elementRect.right - ancestorRect.left,
-            el.clientWidth
+            currentElement.clientWidth
         );
         const deltaY = computeScrollDelta(
-            elementRect.top    - ancestorRect.top,
+            elementRect.top - ancestorRect.top,
             elementRect.bottom - ancestorRect.top,
-            el.clientHeight
+            currentElement.clientHeight
         );
 
-        if (deltaX !== 0 || deltaY !== 0) {
-            el.scrollLeft = previousLeft + deltaX;
-            el.scrollTop  = previousTop  + deltaY;
-            restoreCbs.push(() => {
-                el.scrollLeft = previousLeft;
-                el.scrollTop  = previousTop;
-            });
+        if((deltaX !== 0) || (deltaY !== 0)) {
+            currentElement.scrollLeft = previousLeft + deltaX;
+            currentElement.scrollTop  = previousTop  + deltaY;
+
+            restoreCbs
+                .push(() => {
+                    currentElement.scrollLeft = previousLeft;
+                    currentElement.scrollTop  = previousTop;
+                });
         }
     }
 
-    // window-level:
+    // window-level
     const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
 
@@ -67,11 +81,15 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
     const deltaX: number = computeScrollDelta(elementRect.left, elementRect.right, viewportWidth);
     const deltaY: number = computeScrollDelta(elementRect.top, elementRect.bottom, viewportHeight);
 
-    if(deltaX !== 0 || deltaY !== 0) {
+    if((deltaX !== 0) || (deltaY !== 0)) {
         const previousX: number = window.scrollX;
         const previousY: number = window.scrollY;
 
-        window.scrollTo(previousX + deltaX, previousY + deltaY);
+        window.scrollTo({
+            top: previousY + deltaY,
+            left: previousX + deltaX,
+            behavior: "instant"
+        });
 
         restoreCbs.
             push((): void => {

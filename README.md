@@ -72,3 +72,11 @@ function checkInteractivity(element: Element, checks?: InteractivityChecks): {
  */
 function filterInteractive(dom: Document | Element, checks?: InteractivityChecks): Element
 ```
+
+### DEMO
+
+Open [demo/demo.html](./demo/demo.html) in a browser.
+
+<a href="./demo/demo.html">
+  <img width="830" src="./.github/demo-screenshot.png">
+</a>

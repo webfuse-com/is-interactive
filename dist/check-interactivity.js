@@ -149,13 +149,15 @@ function checkInteractivity(element, checks = {}) {
         };
       }
     }
-    const area = rect.width * rect.height;
-    const occlusionSamples = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
-    if (checks.occluded && isElementOccluded(element, occlusionSamples)) {
-      return {
-        isInteractive: false,
-        reason: "occluded"
-      };
+    if (checks.occluded) {
+      const area = rect.width * rect.height;
+      const occlusionSamples = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
+      if (isElementOccluded(element, occlusionSamples)) {
+        return {
+          isInteractive: false,
+          reason: "occluded"
+        };
+      }
     }
   }
   return {

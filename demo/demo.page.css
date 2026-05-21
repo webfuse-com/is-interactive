@@ -5,6 +5,7 @@
     --color-bg--mute: #E6F7F5;
     --color-fg: #092020;
 
+    position: relative;
     background-color: var(--color-bg);
     color: var(--color-fg);
     overflow: scroll;
