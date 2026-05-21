@@ -6,6 +6,7 @@
   "description": "",
   "main": "./dist/api.js",
   "scripts": {
+    "prepare": "husky",
     "build:lib": "npx esbuild ./src/* --outdir=./dist/ --platform=node --format=esm --target=es2022 --packages=external",
     "build:lib:watch": "npm run build:lib -- --watch",
     "build:browser": "npx esbuild ./src/api.browser.ts --bundle --outfile=./dist/api.browser.js",
@@ -25,6 +26,7 @@
   "homepage": "https://github.com/webfuse-com/is-interactive#readme",
   "devDependencies": {
     "esbuild": "^0.28.0",
+    "husky": "^9.1.7",
     "puppeteer": "^24.42.0",
     "typescript": "^6.0.3"
   }
