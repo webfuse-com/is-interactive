@@ -8,6 +8,9 @@ const DISABLEABLE_TAG_NAMES = [
   "OPTION",
   "FIELDSET"
 ];
+const VISIBILITY_STYLE_OFF_VALUES = ["hidden", "collapse"];
+const OVERFLOW_STYLE_CLIP_OFF_VALUES = ["hidden", "clip"];
+const OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
 const MAX_OCCLUSION_SAMPLES = 32;
 function checkInteractivity(element, checks = {}) {
   if (element?.nodeType !== 1) {
@@ -99,11 +102,10 @@ function checkInteractivity(element, checks = {}) {
         };
       }
     }
-    const invisibilityValues = ["hidden", "collapse"];
     let currentElement = element;
     while (currentElement) {
       const style = getComputedStyle(currentElement);
-      if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || invisibilityValues.includes(style.visibility))) {
+      if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility))) {
         return {
           isInteractive: false,
           reason: "invisible"
@@ -121,15 +123,29 @@ function checkInteractivity(element, checks = {}) {
       };
     }
     if (checks.clipped) {
-      const clippingValues = ["hidden", "clip"];
       let currentElement = element.parentElement;
       while (currentElement) {
         const style = getComputedStyle(currentElement);
-        const clipsX = clippingValues.includes(style.overflowX);
-        const clipsY = clippingValues.includes(style.overflowY);
+        const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
+        const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
+        const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
+        const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
         if (clipsX || clipsY) {
           const ancestorRect = currentElement.getBoundingClientRect();
           if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
+            return {
+              isInteractive: false,
+              reason: "clipped"
+            };
+          }
+        }
+        if (scrollsX || scrollsY) {
+          const ancestorRect = currentElement.getBoundingClientRect();
+          const localTop = rect.top - ancestorRect.top + currentElement.scrollTop;
+          const localBottom = rect.bottom - ancestorRect.top + currentElement.scrollTop;
+          const localLeft = rect.left - ancestorRect.left + currentElement.scrollLeft;
+          const localRight = rect.right - ancestorRect.left + currentElement.scrollLeft;
+          if (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight) || scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth)) {
             return {
               isInteractive: false,
               reason: "clipped"

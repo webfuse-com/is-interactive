@@ -11,6 +11,9 @@ const DISABLEABLE_TAG_NAMES: string[] = [
     "OPTION",
     "FIELDSET"
 ];
+const VISIBILITY_STYLE_OFF_VALUES: string[] = [ "hidden", "collapse" ];
+const OVERFLOW_STYLE_CLIP_OFF_VALUES: string[] = [ "hidden", "clip" ];
+const OVERFLOW_STYLE_SCROLL_OFF_VALUES: string[] = [ "auto", "scroll" ];
 const MAX_OCCLUSION_SAMPLES: number = 32;
 
 
@@ -36,7 +39,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         offViewport: false,
 
         ...(checks ?? {})
-    } as InteractivityChecks;
+    };
 
     // Checks are in ascending order of computational cost!
 
@@ -129,8 +132,6 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             }
         }
 
-        const invisibilityValues: string[] = [ "hidden", "collapse" ];
-
         let currentElement: Element | null = element;
 
         while(currentElement) {
@@ -138,7 +139,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
 
             if(
                 checks.invisible
-                && (style.display === "none" || parseFloat(style.opacity) === 0 || invisibilityValues.includes(style.visibility))
+                && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility))
             ) {
                 return {
                     isInteractive: false,
@@ -164,15 +165,15 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
 
         if(checks.clipped) {
-            const clippingValues: string[] = [ "hidden", "clip" ];
- 
             let currentElement: Element | null = element.parentElement;
  
             while(currentElement) {
                 const style: CSSStyleDeclaration = getComputedStyle(currentElement);
  
-                const clipsX: boolean = clippingValues.includes(style.overflowX);
-                const clipsY: boolean = clippingValues.includes(style.overflowY);
+                const clipsX: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
+                const clipsY: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
+                const scrollsX: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
+                const scrollsY: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
  
                 if(clipsX || clipsY) {
                     const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
@@ -188,9 +189,28 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                     }
                 }
  
+                if(scrollsX || scrollsY) {
+                    const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+                    const localTop: number = rect.top - ancestorRect.top + currentElement.scrollTop;
+                    const localBottom: number = rect.bottom - ancestorRect.top + currentElement.scrollTop;
+                    const localLeft: number = rect.left - ancestorRect.left + currentElement.scrollLeft;
+                    const localRight: number = rect.right - ancestorRect.left + currentElement.scrollLeft;
+ 
+                    if(
+                           (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight))
+                        || (scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth))
+                    ) {
+                        return {
+                            isInteractive: false,
+                            reason: "clipped"
+                        };
+                    }
+                }
+ 
                 currentElement = currentElement.parentElement;
             }
         }
+
 
         if(checks.offViewport) {
             const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;

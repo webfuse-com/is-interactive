@@ -22,7 +22,26 @@ const TESTS = [
         }
     },
     {
-        name: "clipped",
+        name: "clipped.true",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
+        name: "clipped.false",
+        expected: {
+            isInteractive: false,
+            reason: "clipped"
+        }
+    },
+    {
+        name: "clipped.scrollable.true",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
+        name: "clipped.scrollable.false",
         expected: {
             isInteractive: false,
             reason: "clipped"
@@ -33,6 +52,12 @@ const TESTS = [
         expected: {
             isInteractive: false,
             reason: "collapsed"
+        }
+    },
+    {
+        name: "collapsed.overflow",
+        expected: {
+            isInteractive: true
         }
     },
     {
@@ -131,9 +156,16 @@ const TESTS = [
         }
     },
     {
-        name: "unclickable.restore",
+        name: "unclickable.restore.true",
         expected: {
             isInteractive: true
+        }
+    },
+    {
+        name: "unclickable.restore.false",
+        expected: {
+            isInteractive: false,
+            reason: "unclickable"
         }
     }
 ];
