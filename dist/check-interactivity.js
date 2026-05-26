@@ -12,6 +12,11 @@ const VISIBILITY_STYLE_OFF_VALUES = ["hidden", "collapse"];
 const OVERFLOW_STYLE_CLIP_OFF_VALUES = ["hidden", "clip"];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
 const MAX_OCCLUSION_SAMPLES = 32;
+function readProperty(element, property) {
+  if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
+  const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
+  return getter?.call(element);
+}
 function checkInteractivity(element, checks = {}) {
   if (element?.nodeType !== 1) {
     return {
@@ -34,7 +39,7 @@ function checkInteractivity(element, checks = {}) {
     ...checks ?? {}
   };
   if (checks.disconnected) {
-    if (!element.isConnected) {
+    if (readProperty(element, "isConnected") !== true) {
       return {
         isInteractive: false,
         reason: "disconnected"
@@ -45,22 +50,22 @@ function checkInteractivity(element, checks = {}) {
     let currentElement = element;
     while (currentElement) {
       if (!(currentElement instanceof HTMLElement)) {
-        currentElement = currentElement.parentElement;
+        currentElement = readProperty(currentElement, "parentElement") ?? null;
         continue;
       }
-      if (checks.hidden && currentElement.hidden) {
+      if (checks.hidden && readProperty(currentElement, "hidden") === true) {
         return {
           isInteractive: false,
           reason: "hidden"
         };
       }
-      if (checks.inert && currentElement?.inert) {
+      if (checks.inert && readProperty(currentElement, "inert") === true) {
         return {
           isInteractive: false,
           reason: "inert"
         };
       }
-      currentElement = currentElement.parentElement;
+      currentElement = readProperty(currentElement, "parentElement") ?? null;
     }
   }
   if (checks.disabled) {
@@ -111,7 +116,7 @@ function checkInteractivity(element, checks = {}) {
           reason: "invisible"
         };
       }
-      currentElement = currentElement.parentElement;
+      currentElement = readProperty(currentElement, "parentElement") ?? null;
     }
   }
   if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
@@ -123,7 +128,7 @@ function checkInteractivity(element, checks = {}) {
       };
     }
     if (checks.clipped) {
-      let currentElement = element.parentElement;
+      let currentElement = readProperty(element, "parentElement") ?? null;
       while (currentElement) {
         const style = getComputedStyle(currentElement);
         const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
@@ -152,7 +157,7 @@ function checkInteractivity(element, checks = {}) {
             };
           }
         }
-        currentElement = currentElement.parentElement;
+        currentElement = readProperty(currentElement, "parentElement") ?? null;
       }
     }
     if (checks.offViewport) {

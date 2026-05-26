@@ -17,6 +17,20 @@ const OVERFLOW_STYLE_SCROLL_OFF_VALUES: string[] = [ "auto", "scroll" ];
 const MAX_OCCLUSION_SAMPLES: number = 32;
 
 
+function readProperty<T>(element: Element, property: string): T | undefined {
+    if(
+        !(element instanceof HTMLFormElement)
+        || !Object.prototype.hasOwnProperty.call(element, property)
+    ) return (element as any)[property];
+
+    const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get
+        ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get
+        ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
+
+    return getter?.call(element) as T | undefined;
+}
+
+
 export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
     if(element?.nodeType !== 1) {
         return {
@@ -44,7 +58,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     // Checks are in ascending order of computational cost!
 
     if(checks.disconnected) {
-        if(!element.isConnected) {
+        if(readProperty<boolean>(element, "isConnected") !== true) {
             return {
                 isInteractive: false,
                 reason: "disconnected"
@@ -57,14 +71,14 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
  
         while(currentElement) {
             if(!(currentElement instanceof HTMLElement)) {
-                currentElement = currentElement.parentElement;
+                currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
 
                 continue;
             }
 
             if(
                 checks.hidden
-                && currentElement.hidden
+                && readProperty<boolean>(currentElement, "hidden") === true
             ) {
                 return {
                     isInteractive: false,
@@ -74,7 +88,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
 
             if(
                 checks.inert
-                && (currentElement as HTMLElement & { inert: boolean })?.inert
+                && readProperty<boolean>(currentElement, "inert") === true
             ) {
                 return {
                     isInteractive: false,
@@ -82,7 +96,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 };
             }
  
-            currentElement = currentElement.parentElement;
+            currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
         }
     }
 
@@ -147,7 +161,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 };
             }
 
-            currentElement = currentElement.parentElement;
+            currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
         }
     }
 
@@ -165,7 +179,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
 
         if(checks.clipped) {
-            let currentElement: Element | null = element.parentElement;
+            let currentElement: Element | null = readProperty<Element | null>(element, "parentElement") ?? null;
  
             while(currentElement) {
                 const style: CSSStyleDeclaration = getComputedStyle(currentElement);
@@ -207,7 +221,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                     }
                 }
  
-                currentElement = currentElement.parentElement;
+                currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
             }
         }
 
