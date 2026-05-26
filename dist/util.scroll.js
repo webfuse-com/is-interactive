@@ -1,3 +1,6 @@
+const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop").set;
+const nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft").set;
+const nativeWindowScrollTo = window.scrollTo.bind(window);
 function computeScrollDelta(near, far, viewport) {
   if (near >= 0 && far <= viewport) return 0;
   if (near < 0) return near;
@@ -33,11 +36,11 @@ function scrollIntoViewSynchronously(element) {
       currentElement.clientHeight
     );
     if (deltaX2 !== 0 || deltaY2 !== 0) {
-      currentElement.scrollLeft = previousLeft + deltaX2;
-      currentElement.scrollTop = previousTop + deltaY2;
+      nativeScrollLeft.call(currentElement, previousLeft + deltaX2);
+      nativeScrollTop.call(currentElement, previousTop + deltaY2);
       restoreCbs.push(() => {
-        currentElement.scrollLeft = previousLeft;
-        currentElement.scrollTop = previousTop;
+        nativeScrollLeft.call(currentElement, previousLeft);
+        nativeScrollTop.call(currentElement, previousTop);
       });
     }
   }
@@ -49,13 +52,17 @@ function scrollIntoViewSynchronously(element) {
   if (deltaX !== 0 || deltaY !== 0) {
     const previousX = window.scrollX;
     const previousY = window.scrollY;
-    window.scrollTo({
+    nativeWindowScrollTo({
       top: previousY + deltaY,
       left: previousX + deltaX,
       behavior: "instant"
     });
     restoreCbs.push(() => {
-      window.scrollTo(previousX, previousY);
+      nativeWindowScrollTo({
+        top: previousY,
+        left: previousX,
+        behavior: "instant"
+      });
     });
   }
   return restoreCbs;

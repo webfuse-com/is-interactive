@@ -1,3 +1,8 @@
+const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!.set!;
+const nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft")!.set!;
+const nativeWindowScrollTo = window.scrollTo.bind(window);
+
+
 function computeScrollDelta(near: number, far: number, viewport: number): number {
     if(near >= 0 && far <= viewport) return 0;
 
@@ -61,13 +66,13 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
         );
 
         if((deltaX !== 0) || (deltaY !== 0)) {
-            currentElement.scrollLeft = previousLeft + deltaX;
-            currentElement.scrollTop  = previousTop  + deltaY;
+            nativeScrollLeft.call(currentElement, previousLeft + deltaX);
+            nativeScrollTop.call(currentElement, previousTop + deltaY);
 
             restoreCbs
                 .push(() => {
-                    currentElement.scrollLeft = previousLeft;
-                    currentElement.scrollTop  = previousTop;
+                    nativeScrollLeft.call(currentElement, previousLeft);
+                    nativeScrollTop.call(currentElement, previousTop);
                 });
         }
     }
@@ -85,7 +90,7 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
         const previousX: number = window.scrollX;
         const previousY: number = window.scrollY;
 
-        window.scrollTo({
+        nativeWindowScrollTo({
             top: previousY + deltaY,
             left: previousX + deltaX,
             behavior: "instant"
@@ -93,7 +98,11 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
 
         restoreCbs.
             push((): void => {
-                window.scrollTo(previousX, previousY);
+                nativeWindowScrollTo({
+                    top: previousY,
+                    left: previousX,
+                    behavior: "instant"
+                });
             });
     }
 
