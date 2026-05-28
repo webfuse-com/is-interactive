@@ -17,6 +17,16 @@ function readProperty(element, property) {
   const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
   return getter?.call(element);
 }
+function getParentElement(element) {
+  if (!element) return null;
+  const parent = readProperty(element, "parentElement");
+  if (parent) return parent;
+  const root = element.getRootNode();
+  if (root?.host instanceof Element) {
+    return root.host;
+  }
+  return null;
+}
 function checkInteractivity(element, checks = {}) {
   if (element?.nodeType !== 1) {
     return {
@@ -50,11 +60,11 @@ function checkInteractivity(element, checks = {}) {
     let currentElement = element;
     while (currentElement) {
       if (!(currentElement instanceof HTMLElement)) {
-        currentElement = readProperty(currentElement, "parentElement") ?? null;
+        currentElement = getParentElement(currentElement);
         continue;
       }
       if (checks.hidden && readProperty(currentElement, "hidden") === true) {
-        const style = getComputedStyle(element);
+        const style = getComputedStyle(currentElement);
         if (style.display === "none") {
           return {
             isInteractive: false,
@@ -69,7 +79,7 @@ function checkInteractivity(element, checks = {}) {
           reason: "inert"
         };
       }
-      currentElement = readProperty(currentElement, "parentElement") ?? null;
+      currentElement = getParentElement(currentElement);
     }
   }
   if (checks.disabled) {
@@ -120,7 +130,7 @@ function checkInteractivity(element, checks = {}) {
           reason: "invisible"
         };
       }
-      currentElement = readProperty(currentElement, "parentElement") ?? null;
+      currentElement = getParentElement(currentElement);
     }
   }
   if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
@@ -132,7 +142,7 @@ function checkInteractivity(element, checks = {}) {
       };
     }
     if (checks.clipped) {
-      let currentElement = readProperty(element, "parentElement") ?? null;
+      let currentElement = getParentElement(element);
       while (currentElement) {
         const style = getComputedStyle(currentElement);
         const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
@@ -161,7 +171,7 @@ function checkInteractivity(element, checks = {}) {
             };
           }
         }
-        currentElement = readProperty(currentElement, "parentElement") ?? null;
+        currentElement = getParentElement(currentElement);
       }
     }
     if (checks.offViewport) {

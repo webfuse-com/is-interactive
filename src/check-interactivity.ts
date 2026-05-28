@@ -30,6 +30,22 @@ function readProperty<T>(element: Element, property: string): T | undefined {
     return getter?.call(element) as T | undefined;
 }
 
+function getParentElement(element: Element | null): Element | null {
+    if(!element) return null;
+
+    const parent = readProperty<Element | null>(element, "parentElement");
+
+    if(parent) return parent;
+    
+    const root = element.getRootNode() as any;
+
+    if(root?.host instanceof Element) {
+        return root.host;
+    }
+
+    return null;
+}
+
 
 export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
     if(element?.nodeType !== 1) {
@@ -71,7 +87,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
  
         while(currentElement) {
             if(!(currentElement instanceof HTMLElement)) {
-                currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
+                currentElement = getParentElement(currentElement);
 
                 continue;
             }
@@ -80,7 +96,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 checks.hidden
                 && readProperty<boolean>(currentElement, "hidden") === true
             ) {
-                const style: CSSStyleDeclaration = getComputedStyle(element);
+                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
 
                 if(style.display === "none") {
                     return {
@@ -100,7 +116,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 };
             }
  
-            currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
+            currentElement = getParentElement(currentElement);
         }
     }
 
@@ -170,7 +186,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 };
             }
 
-            currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
+            currentElement = getParentElement(currentElement);
         }
     }
 
@@ -188,7 +204,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
 
         if(checks.clipped) {
-            let currentElement: Element | null = readProperty<Element | null>(element, "parentElement") ?? null;
+            let currentElement: Element | null = getParentElement(element);
  
             while(currentElement) {
                 const style: CSSStyleDeclaration = getComputedStyle(currentElement);
@@ -230,7 +246,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                     }
                 }
  
-                currentElement = readProperty<Element | null>(currentElement, "parentElement") ?? null;
+                currentElement = getParentElement(currentElement);
             }
         }
 
