@@ -196,10 +196,14 @@
           continue;
         }
         if (checks.hidden && readProperty(currentElement, "hidden") === true) {
-          return {
-            isInteractive: false,
-            reason: "hidden"
-          };
+          const style = getComputedStyle(element);
+          if (style.display === "none") {
+            return {
+              isInteractive: false,
+              reason: "hidden"
+            };
+          }
+          ;
         }
         if (checks.inert && readProperty(currentElement, "inert") === true) {
           return {
@@ -252,7 +256,7 @@
       let currentElement = element;
       while (currentElement) {
         const style = getComputedStyle(currentElement);
-        if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility))) {
+        if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility) || style.contentVisibility === "hidden")) {
           return {
             isInteractive: false,
             reason: "invisible"

@@ -88,7 +88,13 @@ const TESTS = [
         }
     },
     {
-        name: "hidden.true",
+        name: "hidden.true.1",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
+        name: "hidden.true.2",
         expected: {
             isInteractive: true
         }

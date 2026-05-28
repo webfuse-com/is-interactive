@@ -80,9 +80,13 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 checks.hidden
                 && readProperty<boolean>(currentElement, "hidden") === true
             ) {
-                return {
-                    isInteractive: false,
-                    reason: "hidden"
+                const style: CSSStyleDeclaration = getComputedStyle(element);
+
+                if(style.display === "none") {
+                    return {
+                        isInteractive: false,
+                        reason: "hidden"
+                    };
                 };
             }
 
@@ -153,7 +157,12 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
 
             if(
                 checks.invisible
-                && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility))
+                && (
+                    (style.display === "none")
+                    || (parseFloat(style.opacity) === 0)
+                    || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility)
+                    || (style.contentVisibility === "hidden")
+                )
             ) {
                 return {
                     isInteractive: false,
