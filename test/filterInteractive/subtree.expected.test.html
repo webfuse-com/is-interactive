@@ -1,13 +1,11 @@
-<div id="TARGET">
-    <section h="disabled">
-        <div disabled="">
-            <button>
-                Click here
-            </button>
-        </div>
-        <div></div>
-    </section>
-    <section h="disconnected">
-        <div></div>
-    </section>
-</div>
+<section h="disabled" id="TARGET">
+    <disabled-wrapper>
+        <template shadowrootmode="open" shadowrootserializable="">
+            <strong>
+                Shadow
+            </strong>
+            <div></div>
+        </template>
+    </disabled-wrapper>
+    <div></div>
+</section>

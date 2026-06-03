@@ -11,39 +11,86 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
 ]);
 
 
+function cloneWithShadow(node: Element): Element {
+    const clone: Element = node.cloneNode(false) as Element;
+
+    const shadow: ShadowRoot | null = node.shadowRoot;
+    if(shadow) {
+        const clonedShadow: ShadowRoot = clone.attachShadow({
+            mode: shadow.mode,
+            serializable: true
+        });
+
+        for(let child: Element | null = shadow.firstElementChild; child; child = child.nextElementSibling) {
+            clonedShadow.appendChild(cloneWithShadow(child));
+        }
+    }
+
+    for(const child of node.childNodes) {
+        if(child.nodeType === Node.ELEMENT_NODE) {
+            clone.appendChild(cloneWithShadow(child as Element));
+        } else {
+            clone.appendChild(child.cloneNode(true));
+        }
+    }
+
+    return clone;
+}
+
+function removeVirtual(virtual: Element): void {
+    const parent: Element | ShadowRoot | null =
+        virtual.parentElement ?? (virtual.parentNode as ShadowRoot | null);
+    parent?.removeChild(virtual);
+}
+
 function filterDOM(
-    live: Element,
-    virtual: Element,
+    liveElement: Element,
+    virtualElement: Element,
     isRoot: boolean,
     checks: Partial<InteractivityChecks>
 ): boolean {
-    const result: InteractivityResult = checkInteractivity(live, checks);
+    const result: InteractivityResult = checkInteractivity(liveElement, checks);
 
     if(
         !result.isInteractive
         && result.reason
         && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)
     ) {
-        if(!isRoot) {
-            virtual.parentElement?.removeChild(virtual);
-        }
+        if(!isRoot) removeVirtual(virtualElement);
 
         return false;
     }
 
-    const pairs: [ Element, Element ][] = [];
+    const pairs: [Element, Element][] = [];
 
-    let liveChild: Element | null = live.firstElementChild;
-    let virtualChild: Element | null = virtual.firstElementChild;
+    const liveShadow: ShadowRoot | null = liveElement.shadowRoot;
+    const virtualShadow: ShadowRoot | null = virtualElement.shadowRoot;
+
+    if(liveShadow && virtualShadow) {
+        let liveChild: Element | null = liveShadow.firstElementChild;
+        let virtualChild: Element | null = virtualShadow.firstElementChild;
+
+        while(liveChild && virtualChild) {
+            pairs.push([ liveChild, virtualChild ]);
+
+            liveChild = liveChild.nextElementSibling;
+            virtualChild = virtualChild.nextElementSibling;
+        }
+    }
+
+    let liveChild: Element | null = liveElement.firstElementChild;
+    let virtualChild: Element | null = virtualElement.firstElementChild;
+
     while(liveChild && virtualChild) {
-        pairs.push([ liveChild, virtualChild ]);
+        pairs.push([ liveChild,  virtualChild]);
+        
         liveChild = liveChild.nextElementSibling;
         virtualChild = virtualChild.nextElementSibling;
     }
 
     let hasInteractiveDescendant: boolean = false;
 
-    for(const [l, v] of pairs) {
+    for(const [ l, v ] of pairs) {
         if(filterDOM(l, v, false, checks)) {
             hasInteractiveDescendant = true;
         }
@@ -53,9 +100,7 @@ function filterDOM(
 
     if(isRoot) return keep;
 
-    if(!keep) {
-        virtual.parentElement?.removeChild(virtual);
-    }
+    if(!keep) removeVirtual(virtualElement);
 
     return keep;
 }
@@ -63,18 +108,19 @@ function filterDOM(
 export function filterInteractive(
     dom: Document | Element,
     checks?: Partial<InteractivityChecks>,
-    virtualRoot?: Element
+    virtualDOM?: Document | Element
 ): Element {
     checks = {
         occluded: false,
-
         ...checks
     };
 
     const liveRoot: Element = (dom instanceof Document)
         ? dom.documentElement
         : dom;
-    virtualRoot ??= liveRoot.cloneNode(true) as Element;
+    const virtualRoot: Element = virtualDOM
+        ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
+        : cloneWithShadow(liveRoot);
 
     filterDOM(liveRoot, virtualRoot, true, checks);
 

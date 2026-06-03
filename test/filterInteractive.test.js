@@ -88,8 +88,14 @@ test("filterInteractive()", async () => {
                             ?? document
                         );
 
+                        const wrapper = document.createElement('div');
+
+                        wrapper.appendChild(filtered);
+
                         return {
-                            result: filtered?.outerHTML ?? filtered?.documentElement.outerHTML ?? null
+                            result: wrapper.getHTML({
+                                serializableShadowRoots: true
+                            })
                         };
                     } catch (err) {
                         return {

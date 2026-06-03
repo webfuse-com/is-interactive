@@ -36,9 +36,14 @@
                 </div>
             </section>
             <section H="disabled">
-                <div disabled>
-                    <button>Click here</button>
-                </div>
+                <disabled-wrapper>
+                    <template shadowrootmode="open">
+                        <strong>Shadow</strong>
+                        <div>
+                            <button disabled>Click here</button>
+                        </div>
+                    </template>
+                </disabled-wrapper>
                 <fieldset disabled>
                     <button>Click here</button>
                 </fieldset>
