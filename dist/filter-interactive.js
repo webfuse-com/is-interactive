@@ -6,46 +6,43 @@ const CASCADING_NON_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
   "ariaHidden",
   "invisible"
 ]);
-function markDOM(live, virtual, marks, checks) {
+function filterDOM(live, virtual, isRoot, checks) {
   const result = checkInteractivity(live, checks);
-  marks.set(virtual, result);
-  if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) return;
+  if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) {
+    if (!isRoot) {
+      virtual.parentElement?.removeChild(virtual);
+    }
+    return false;
+  }
+  const pairs = [];
   let liveChild = live.firstElementChild;
   let virtualChild = virtual.firstElementChild;
   while (liveChild && virtualChild) {
-    markDOM(liveChild, virtualChild, marks, checks);
+    pairs.push([liveChild, virtualChild]);
     liveChild = liveChild.nextElementSibling;
     virtualChild = virtualChild.nextElementSibling;
   }
+  let hasInteractiveDescendant = false;
+  for (const [l, v] of pairs) {
+    if (filterDOM(l, v, false, checks)) {
+      hasInteractiveDescendant = true;
+    }
+  }
+  const keep = result.isInteractive || hasInteractiveDescendant;
+  if (isRoot) return keep;
+  if (!keep) {
+    virtual.parentElement?.removeChild(virtual);
+  }
+  return keep;
 }
-function restructureDOM(node, isRoot, marks) {
-  const children = [];
-  for (let child = node.firstElementChild; child; child = child.nextElementSibling) {
-    children.push(child);
-  }
-  for (const child of children) {
-    restructureDOM(child, false, marks);
-  }
-  if (isRoot) return;
-  const result = marks.get(node) ?? { isInteractive: false };
-  if (result.isInteractive) return;
-  const parent = node.parentElement;
-  if (!parent) return;
-  while (node.firstElementChild) {
-    parent.insertBefore(node.firstElementChild, node);
-  }
-  parent.removeChild(node);
-}
-function filterInteractive(dom, checks) {
+function filterInteractive(dom, checks, virtualRoot) {
   checks = {
     occluded: false,
     ...checks
   };
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
-  const virtualRoot = liveRoot.cloneNode(true);
-  const marks = /* @__PURE__ */ new Map();
-  markDOM(liveRoot, virtualRoot, marks, checks);
-  restructureDOM(virtualRoot, true, marks);
+  virtualRoot ??= liveRoot.cloneNode(true);
+  filterDOM(liveRoot, virtualRoot, true, checks);
   return virtualRoot;
 }
 export {

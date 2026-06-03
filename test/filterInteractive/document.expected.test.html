@@ -40,14 +40,16 @@
                     <button style="position: absolute; top: 100px; left: 100px; width: 50px; height: 25px;">
                         Click here
                     </button>
-                    <div style="position: absolute; top: 90px; left: 90px; width: 100px; height: 100px; background-color: lime;"></div>
+                    <div style="position: absolute; top: 90px; left: 90px; width: 100px; height: 100px; background-color: lime;">
+                    </div>
                 </div>
                 <!-- partially -->
                 <div>
                     <button style="position: absolute; top: 100px; left: 100px; width: 50px; height: 25px;">
                         Click here
                     </button>
-                    <div style="position: absolute; top: 90px; left: 90px; width: 35px; height: 100px; background-color: aqua;"></div>
+                    <div style="position: absolute; top: 90px; left: 90px; width: 35px; height: 100px; background-color: aqua;">
+                    </div>
                 </div>
             </section>
             <section h="offViewport" class="reserve-space">
@@ -58,11 +60,14 @@
                 </div>
             </section>
             <section h="unclickable">
-                <div></div>
+                <div>
+                </div>
                 <!-- recovered -->
-                <button style="pointer-events: auto;">
-                    Click here
-                </button>
+                <div style="pointer-events: none;">
+                    <button style="pointer-events: auto;">
+                        Click here
+                    </button>
+                </div>
             </section>
         </main>
         <footer>
