@@ -154,10 +154,10 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
     }
 
+    const style: CSSStyleDeclaration = getComputedStyle(element);
+
     if(checks.invisible || checks.unclickable) {
         if(checks.unclickable) {
-            const style: CSSStyleDeclaration = getComputedStyle(element);
-
             if(style.pointerEvents === "none") {
                 return {
                     isInteractive: false,
@@ -196,6 +196,11 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         if(
             checks.collapsed
             && (rect.width <= 0 || rect.height <= 0)
+            && (
+                (style.overflow !== "visible")
+                || [ ...element.childNodes ]
+                    .every(node => (node.nodeType === Node.TEXT_NODE) && !(node as Text).textContent.trim().length)
+            )
         ) {
             return {
                 isInteractive: false,

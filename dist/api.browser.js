@@ -206,8 +206,8 @@
           continue;
         }
         if (checks.hidden && readProperty(currentElement, "hidden") === true) {
-          const style = getComputedStyle(currentElement);
-          if (style.display === "none") {
+          const style2 = getComputedStyle(currentElement);
+          if (style2.display === "none") {
             return {
               isInteractive: false,
               reason: "hidden"
@@ -253,9 +253,9 @@
         };
       }
     }
+    const style = getComputedStyle(element);
     if (checks.invisible || checks.unclickable) {
       if (checks.unclickable) {
-        const style = getComputedStyle(element);
         if (style.pointerEvents === "none") {
           return {
             isInteractive: false,
@@ -265,8 +265,8 @@
       }
       let currentElement = element;
       while (currentElement) {
-        const style = getComputedStyle(currentElement);
-        if (checks.invisible && (style.display === "none" || parseFloat(style.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility) || style.contentVisibility === "hidden")) {
+        const style2 = getComputedStyle(currentElement);
+        if (checks.invisible && (style2.display === "none" || parseFloat(style2.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style2.visibility) || style2.contentVisibility === "hidden")) {
           return {
             isInteractive: false,
             reason: "invisible"
@@ -277,7 +277,7 @@
     }
     if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
       const rect = element.getBoundingClientRect();
-      if (checks.collapsed && (rect.width <= 0 || rect.height <= 0)) {
+      if (checks.collapsed && (rect.width <= 0 || rect.height <= 0) && (style.overflow !== "visible" || [...element.childNodes].every((node) => node.nodeType === Node.TEXT_NODE && !node.textContent.trim().length))) {
         return {
           isInteractive: false,
           reason: "collapsed"
@@ -286,11 +286,11 @@
       if (checks.clipped) {
         let currentElement = getParentElement(element);
         while (currentElement) {
-          const style = getComputedStyle(currentElement);
-          const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
-          const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
-          const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
-          const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
+          const style2 = getComputedStyle(currentElement);
+          const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowX);
+          const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowY);
+          const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowX);
+          const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowY);
           if (clipsX || clipsY) {
             const ancestorRect = currentElement.getBoundingClientRect();
             if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
