@@ -97,13 +97,14 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         hidden: true,
         inert: true,
         disabled: true,
-        ariaHidden: true,
         invisible: true,
         unclickable: true,
         collapsed: true,
         clipped: true,
         occluded: true,
-        offViewport: false,
+        // false
+        offViewport: false, // consider full document
+        ariaHidden: false,  // might be exclusive to non-GUI navigation
 
         ...(checks ?? {})
     };
@@ -318,19 +319,26 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
 
         if(checks.offViewport) {
-            const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
-            const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
+            if( [ "fixed", "absolute" ].includes(geometryStyle.position)) {
+                const scrollWidth: number = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
+                const scrollHeight: number = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
 
-            if(
-                (rect.bottom <= 0)
-                || (rect.right <= 0)
-                || (rect.left >= viewportWidth)
-                || (rect.top >= viewportHeight)
-            ) {
-                return {
-                    isInteractive: false,
-                    reason: "offViewport"
-                };
+                const top: number = rect.top + window.scrollY;
+                const bottom: number = rect.bottom + window.scrollY;
+                const left: number = rect.left + window.scrollX;
+                const right: number = rect.right + window.scrollX;
+
+                if(
+                    (top >= scrollHeight)
+                    || (bottom <= 0)
+                    || (left >= scrollWidth)
+                    || (right <= 0)
+                ) {
+                    return {
+                        isInteractive: false,
+                        reason: "offViewport"
+                    };
+                }
             }
         }
 

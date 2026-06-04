@@ -85,7 +85,10 @@ test("filterInteractive()", async () => {
                                 window[TARGET_ELEMENT_KEY]
                                 ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`)
                             )
-                            ?? document
+                                ?? document,
+                            {
+                                ariaHidden: true
+                            }
                         );
 
                         const wrapper = document.createElement('div');

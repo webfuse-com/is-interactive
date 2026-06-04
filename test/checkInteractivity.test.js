@@ -219,6 +219,7 @@ test("checkInteractivity()", async () => {
                                 window[TARGET_ELEMENT_KEY]
                                 ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`),
                                 {
+                                    ariaHidden: true,
                                     offViewport: true
                                 }
                             )

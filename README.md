@@ -35,17 +35,18 @@ const surfaceDOMSnapshot = selector => {
 ``` ts
 // Toggle checks to perform (default: all enabled, except 'offViewport')
 interface InteractivityChecks {
-  disconnected: boolean;
-  hidden: boolean;
-  inert: boolean;
-  disabled: boolean;
-  ariaHidden: boolean;
-  invisible: boolean;
-  unclickable: boolean;
-  collapsed: boolean;
-  clipped: boolean;
-  occluded: boolean;
-  offViewport: boolean;
+  disconnected: boolean;  // true
+  modalBlocked: boolean;  // true
+  hidden: boolean;        // true
+  inert: boolean;         // true
+  disabled: boolean;      // true
+  invisible: boolean;     // true
+  unclickable: boolean;   // true
+  collapsed: boolean;     // true
+  clipped: boolean;       // true
+  occluded: boolean;      // true
+  ariaHidden: boolean;    // false
+  offViewport: boolean;   // false
 }
 
 /**

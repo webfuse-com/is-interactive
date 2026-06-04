@@ -229,13 +229,16 @@
       hidden: true,
       inert: true,
       disabled: true,
-      ariaHidden: true,
       invisible: true,
       unclickable: true,
       collapsed: true,
       clipped: true,
       occluded: true,
+      // false
       offViewport: false,
+      // consider full document
+      ariaHidden: false,
+      // might be exclusive to non-GUI navigation
       ...checks ?? {}
     };
     if (checks.disconnected) {
@@ -388,13 +391,19 @@
         }
       }
       if (checks.offViewport) {
-        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
-        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-        if (rect.bottom <= 0 || rect.right <= 0 || rect.left >= viewportWidth || rect.top >= viewportHeight) {
-          return {
-            isInteractive: false,
-            reason: "offViewport"
-          };
+        if (["fixed", "absolute"].includes(geometryStyle.position)) {
+          const scrollWidth = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
+          const scrollHeight = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
+          const top = rect.top + window.scrollY;
+          const bottom = rect.bottom + window.scrollY;
+          const left = rect.left + window.scrollX;
+          const right = rect.right + window.scrollX;
+          if (top >= scrollHeight || bottom <= 0 || left >= scrollWidth || right <= 0) {
+            return {
+              isInteractive: false,
+              reason: "offViewport"
+            };
+          }
         }
       }
       if (checks.occluded) {
