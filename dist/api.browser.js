@@ -110,17 +110,32 @@
     }
     return samplePoints;
   }
+  function composedContains(ancestor, node) {
+    while (node) {
+      if (node === ancestor) return true;
+      const parent = node.parentNode;
+      if (parent) {
+        node = parent;
+        continue;
+      }
+      if (node.host instanceof Element) {
+        node = node.host;
+        continue;
+      }
+      break;
+    }
+    return false;
+  }
   function isElementOnHit(element, rect, samples, viewportWidth, viewportHeight) {
-    const root = element.getRootNode();
     const points = generateSamplePoints(rect, samples);
     for (const point of points) {
       const x = point[0];
       const y = point[1];
       if (x < 0 || y < 0 || x >= viewportWidth || y >= viewportHeight) continue;
-      const stack = root.elementsFromPoint(x, y) ?? [];
+      const stack = document.elementsFromPoint(x, y) ?? [];
       if (stack.length === 0) continue;
       const hitElement = stack[0];
-      if (hitElement === element || element.contains(hitElement) || hitElement.contains(element)) return true;
+      if (hitElement === element || composedContains(element, hitElement) || composedContains(hitElement, element)) return true;
     }
     return false;
   }
@@ -141,18 +156,12 @@
   }
 
   // src/check-interactivity.ts
-  var DISABLEABLE_TAG_NAMES = [
-    "BUTTON",
-    "INPUT",
-    "SELECT",
-    "TEXTAREA",
-    "OPTGROUP",
-    "OPTION",
-    "FIELDSET"
-  ];
   var VISIBILITY_STYLE_OFF_VALUES = ["hidden", "collapse"];
   var OVERFLOW_STYLE_CLIP_OFF_VALUES = ["hidden", "clip"];
   var OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
+  var CONTAINER_STYLE_POSITION_VALUES = ["relative", "absolute", "fixed", "sticky"];
+  var OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
+  var MIN_OCCLUSION_SAMPLES = 1;
   var MAX_OCCLUSION_SAMPLES = 32;
   function readProperty(element, property) {
     if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
@@ -169,6 +178,34 @@
     }
     return null;
   }
+  function closestComposed(element, predicate) {
+    let currentElement = element;
+    while (currentElement) {
+      if (predicate(currentElement)) return currentElement;
+      currentElement = getParentElement(currentElement);
+    }
+    return null;
+  }
+  function getGeometryTarget(element) {
+    if (!OPTION_TAG_NAMES.includes(element.tagName)) return element;
+    const select = element.closest("select");
+    if (!select) return element;
+    if (select.multiple || select.size > 1) return element;
+    return select;
+  }
+  function isBlockedByModal(element) {
+    let hasModal;
+    try {
+      hasModal = !!document.querySelector("dialog:modal");
+    } catch {
+      return false;
+    }
+    if (!hasModal) return false;
+    const hasModalAncestor = closestComposed(element, (element2) => {
+      return element2.tagName.toUpperCase() === "DIALOG" && element2.matches(":modal");
+    });
+    return !hasModalAncestor;
+  }
   function checkInteractivity(element, checks = {}) {
     if (element?.nodeType !== 1) {
       return {
@@ -178,6 +215,7 @@
     }
     checks = {
       disconnected: true,
+      modalBlocked: true,
       hidden: true,
       inert: true,
       disabled: true,
@@ -195,6 +233,14 @@
         return {
           isInteractive: false,
           reason: "disconnected"
+        };
+      }
+    }
+    if (checks.modalBlocked) {
+      if (isBlockedByModal(element)) {
+        return {
+          isInteractive: false,
+          reason: "modalBlocked"
         };
       }
     }
@@ -225,20 +271,13 @@
       }
     }
     if (checks.disabled) {
-      if (DISABLEABLE_TAG_NAMES.includes(element.tagName) && element.disabled) {
+      if (element.matches(":disabled")) {
         return {
           isInteractive: false,
           reason: "disabled"
         };
       }
-      if (element.closest('[aria-disabled="true"]')) {
-        return {
-          isInteractive: false,
-          reason: "disabled"
-        };
-      }
-      const fieldsetElement = element.closest("fieldset[disabled]");
-      if (fieldsetElement && !element.closest("legend")?.parentElement?.isSameNode(fieldsetElement)) {
+      if (closestComposed(element, (el) => el.getAttribute("aria-disabled") === "true")) {
         return {
           isInteractive: false,
           reason: "disabled"
@@ -246,7 +285,7 @@
       }
     }
     if (checks.ariaHidden) {
-      if (element.closest('[aria-hidden="true"]')) {
+      if (closestComposed(element, (el) => el.getAttribute("aria-hidden") === "true")) {
         return {
           isInteractive: false,
           reason: "ariaHidden"
@@ -263,57 +302,79 @@
           };
         }
       }
-      let currentElement = element;
-      while (currentElement) {
-        const style2 = getComputedStyle(currentElement);
-        if (checks.invisible && (style2.display === "none" || parseFloat(style2.opacity) === 0 || VISIBILITY_STYLE_OFF_VALUES.includes(style2.visibility) || style2.contentVisibility === "hidden")) {
+      if (checks.invisible) {
+        if (VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility)) {
           return {
             isInteractive: false,
             reason: "invisible"
           };
         }
-        currentElement = getParentElement(currentElement);
+        let currentElement = element;
+        while (currentElement) {
+          const style2 = getComputedStyle(currentElement);
+          if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
+            return {
+              isInteractive: false,
+              reason: "invisible"
+            };
+          }
+          currentElement = getParentElement(currentElement);
+        }
       }
     }
     if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
-      const rect = element.getBoundingClientRect();
-      if (checks.collapsed && (rect.width <= 0 || rect.height <= 0) && (style.overflow !== "visible" || [...element.childNodes].every((node) => node.nodeType === Node.TEXT_NODE && !node.textContent.trim().length))) {
+      const geometryTarget = getGeometryTarget(element);
+      const geometryStyle = geometryTarget === element ? style : getComputedStyle(geometryTarget);
+      const rect = geometryTarget.getBoundingClientRect();
+      if (checks.collapsed && (rect.width <= 0 || rect.height <= 0) && (geometryStyle.overflow !== "visible" || [...geometryTarget.childNodes].every((node) => node.nodeType === Node.TEXT_NODE && !node.textContent.trim().length))) {
         return {
           isInteractive: false,
           reason: "collapsed"
         };
       }
       if (checks.clipped) {
-        let currentElement = getParentElement(element);
-        while (currentElement) {
-          const style2 = getComputedStyle(currentElement);
-          const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowX);
-          const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowY);
-          const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowX);
-          const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowY);
-          if (clipsX || clipsY) {
-            const ancestorRect = currentElement.getBoundingClientRect();
-            if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
-              return {
-                isInteractive: false,
-                reason: "clipped"
-              };
+        const position = style.position;
+        let currentElement = getParentElement(geometryTarget);
+        let foundContainerBlock = position !== "absolute";
+        if (position !== "fixed") {
+          while (currentElement) {
+            const style2 = getComputedStyle(currentElement);
+            if (!foundContainerBlock) {
+              if (CONTAINER_STYLE_POSITION_VALUES.includes(style2.position)) {
+                foundContainerBlock = true;
+              } else {
+                currentElement = getParentElement(currentElement);
+                continue;
+              }
             }
-          }
-          if (scrollsX || scrollsY) {
-            const ancestorRect = currentElement.getBoundingClientRect();
-            const localTop = rect.top - ancestorRect.top + currentElement.scrollTop;
-            const localBottom = rect.bottom - ancestorRect.top + currentElement.scrollTop;
-            const localLeft = rect.left - ancestorRect.left + currentElement.scrollLeft;
-            const localRight = rect.right - ancestorRect.left + currentElement.scrollLeft;
-            if (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight) || scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth)) {
-              return {
-                isInteractive: false,
-                reason: "clipped"
-              };
+            const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowX);
+            const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowY);
+            const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowX);
+            const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowY);
+            if (clipsX || clipsY) {
+              const ancestorRect = currentElement.getBoundingClientRect();
+              if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
+                return {
+                  isInteractive: false,
+                  reason: "clipped"
+                };
+              }
             }
+            if (scrollsX || scrollsY) {
+              const ancestorRect = currentElement.getBoundingClientRect();
+              const localTop = rect.top - ancestorRect.top + currentElement.scrollTop;
+              const localBottom = rect.bottom - ancestorRect.top + currentElement.scrollTop;
+              const localLeft = rect.left - ancestorRect.left + currentElement.scrollLeft;
+              const localRight = rect.right - ancestorRect.left + currentElement.scrollLeft;
+              if (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight) || scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth)) {
+                return {
+                  isInteractive: false,
+                  reason: "clipped"
+                };
+              }
+            }
+            currentElement = getParentElement(currentElement);
           }
-          currentElement = getParentElement(currentElement);
         }
       }
       if (checks.offViewport) {
@@ -328,8 +389,8 @@
       }
       if (checks.occluded) {
         const area = rect.width * rect.height;
-        const occlusionSamples = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
-        if (isElementOccluded(element, occlusionSamples)) {
+        const occlusionSamples = Math.max(MIN_OCCLUSION_SAMPLES, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
+        if (isElementOccluded(geometryTarget, occlusionSamples)) {
           return {
             isInteractive: false,
             reason: "occluded"
@@ -411,13 +472,13 @@
     if (!keep) removeVirtual(virtualElement);
     return keep;
   }
-  function filterInteractive(dom, checks) {
+  function filterInteractive(dom, checks, virtualDOM) {
     checks = {
       occluded: false,
       ...checks
     };
     const liveRoot = dom instanceof Document ? dom.documentElement : dom;
-    const virtualRoot = cloneWithShadow(liveRoot);
+    const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
     filterDOM(liveRoot, virtualRoot, true, checks);
     return virtualRoot;
   }

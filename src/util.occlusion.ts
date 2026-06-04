@@ -65,6 +65,30 @@ function generateSamplePoints(rect: DOMRect, samples: number): [number, number][
     return samplePoints;
 }
 
+function composedContains(ancestor: Node, node: Node | null): boolean {
+    while(node) {
+        if(node === ancestor) return true;
+
+        const parent: Node | null = node.parentNode;
+
+        if(parent) {
+            node = parent;
+
+            continue;
+        }
+
+        if((node as any).host instanceof Element) {
+            node = (node as any).host;
+
+            continue;
+        }
+
+        break;
+    }
+
+    return false;
+}
+
 function isElementOnHit(
     element: Element,
     rect: DOMRect,
@@ -72,17 +96,15 @@ function isElementOnHit(
     viewportWidth: number,
     viewportHeight: number
 ): boolean {
-    const root: Document | ShadowRoot = element.getRootNode() as Document | ShadowRoot;
-    const points: [number, number][] = generateSamplePoints(rect, samples);
+    const points: [ number, number ][] = generateSamplePoints(rect, samples);
 
     for(const point of points) {
         const x: number = point[0];
         const y: number = point[1];
 
-        // Skip off-viewport sample points:
         if(x < 0 || y < 0 || x >= viewportWidth || y >= viewportHeight) continue;
 
-        const stack: Element[] = root.elementsFromPoint(x, y) ?? [];
+        const stack: Element[] = document.elementsFromPoint(x, y) ?? [];
 
         if(stack.length === 0) continue;
 
@@ -90,8 +112,8 @@ function isElementOnHit(
 
         if(
             (hitElement === element)
-            || element.contains(hitElement)
-            || hitElement.contains(element)
+            || composedContains(element, hitElement)
+            || composedContains(hitElement, element)
         ) return true;
     }
 

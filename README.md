@@ -54,7 +54,9 @@ interface InteractivityChecks {
 function checkInteractivity(element: Element, checks?: InteractivityChecks): {
   isInteractive: boolean;
   reason?:
+    | "notElement"
     | "disconnected"
+    | "modalBlocked"
     | "hidden"
     | "inert"
     | "disabled"

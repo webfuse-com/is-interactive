@@ -105,6 +105,7 @@ function filterDOM(
     return keep;
 }
 
+
 export function filterInteractive(
     dom: Document | Element,
     checks?: Partial<InteractivityChecks>,

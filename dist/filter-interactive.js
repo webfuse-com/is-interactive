@@ -67,13 +67,13 @@ function filterDOM(liveElement, virtualElement, isRoot, checks) {
   if (!keep) removeVirtual(virtualElement);
   return keep;
 }
-function filterInteractive(dom, checks) {
+function filterInteractive(dom, checks, virtualDOM) {
   checks = {
     occluded: false,
     ...checks
   };
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
-  const virtualRoot = cloneWithShadow(liveRoot);
+  const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
   filterDOM(liveRoot, virtualRoot, true, checks);
   return virtualRoot;
 }

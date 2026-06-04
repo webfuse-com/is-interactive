@@ -2,18 +2,12 @@ import { type InteractivityChecks, type InteractivityResult } from "./types.js";
 import { isElementOccluded } from "./util.occlusion.js";
 
 
-const DISABLEABLE_TAG_NAMES: string[] = [
-    "BUTTON",
-    "INPUT",
-    "SELECT",
-    "TEXTAREA",
-    "OPTGROUP",
-    "OPTION",
-    "FIELDSET"
-];
 const VISIBILITY_STYLE_OFF_VALUES: string[] = [ "hidden", "collapse" ];
 const OVERFLOW_STYLE_CLIP_OFF_VALUES: string[] = [ "hidden", "clip" ];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES: string[] = [ "auto", "scroll" ];
+const CONTAINER_STYLE_POSITION_VALUES = [ "relative", "absolute", "fixed", "sticky" ];
+const OPTION_TAG_NAMES: string[] = [ "OPTION", "OPTGROUP" ];
+const MIN_OCCLUSION_SAMPLES = 1;
 const MAX_OCCLUSION_SAMPLES: number = 32;
 
 
@@ -46,6 +40,48 @@ function getParentElement(element: Element | null): Element | null {
     return null;
 }
 
+function closestComposed(element: Element, predicate: (element: Element) => boolean): Element | null {
+    let currentElement: Element | null = element;
+
+    while(currentElement) {
+        if(predicate(currentElement)) return currentElement;
+
+        currentElement = getParentElement(currentElement);
+    }
+
+    return null;
+}
+
+function getGeometryTarget(element: Element): Element {
+    if(!OPTION_TAG_NAMES.includes(element.tagName)) return element;
+
+    const select: HTMLSelectElement | null = element.closest("select");
+
+    if(!select) return element;
+
+    if(select.multiple || select.size > 1) return element;
+
+    return select;
+}
+
+function isBlockedByModal(element: Element): boolean {
+    let hasModal: boolean;
+
+    try {
+        hasModal = !!document.querySelector("dialog:modal");
+    } catch {
+        return false;
+    }
+
+    if(!hasModal) return false;
+
+    const hasModalAncestor: Element | null = closestComposed(element, element => {
+        return (element.tagName.toUpperCase() === "DIALOG") && element.matches(":modal");
+    });
+
+    return !hasModalAncestor;
+}
+
 
 export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
     if(element?.nodeType !== 1) {
@@ -57,6 +93,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
 
     checks = {
         disconnected: true,
+        modalBlocked: true,
         hidden: true,
         inert: true,
         disabled: true,
@@ -78,6 +115,15 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             return {
                 isInteractive: false,
                 reason: "disconnected"
+            };
+        }
+    }
+
+    if(checks.modalBlocked) {
+        if(isBlockedByModal(element)) {
+            return {
+                isInteractive: false,
+                reason: "modalBlocked"
             };
         }
     }
@@ -121,23 +167,14 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     }
 
     if(checks.disabled) {
-        if(DISABLEABLE_TAG_NAMES.includes(element.tagName) && (element as HTMLInputElement).disabled) {
+        if(element.matches(":disabled")) {
             return {
                 isInteractive: false,
                 reason: "disabled"
             };
         }
  
-        if(element.closest("[aria-disabled=\"true\"]")) {
-            return {
-                isInteractive: false,
-                reason: "disabled"
-            };
-        }
- 
-        const fieldsetElement: HTMLFieldSetElement | null = element.closest("fieldset[disabled]");
- 
-        if(fieldsetElement && !element.closest("legend")?.parentElement?.isSameNode(fieldsetElement)) {
+        if(closestComposed(element, el => el.getAttribute("aria-disabled") === "true")) {
             return {
                 isInteractive: false,
                 reason: "disabled"
@@ -146,7 +183,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     }
 
     if(checks.ariaHidden) {
-        if(element.closest("[aria-hidden=\"true\"]")) {
+        if(closestComposed(element, el => el.getAttribute("aria-hidden") === "true")) {
             return {
                 isInteractive: false,
                 reason: "ariaHidden"
@@ -166,39 +203,48 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             }
         }
 
-        let currentElement: Element | null = element;
-
-        while(currentElement) {
-            const style: CSSStyleDeclaration = getComputedStyle(currentElement);
-
-            if(
-                checks.invisible
-                && (
-                    (style.display === "none")
-                    || (parseFloat(style.opacity) === 0)
-                    || VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility)
-                    || (style.contentVisibility === "hidden")
-                )
-            ) {
+        if(checks.invisible) {
+            if(VISIBILITY_STYLE_OFF_VALUES.includes(style.visibility)) {
                 return {
                     isInteractive: false,
                     reason: "invisible"
                 };
             }
 
-            currentElement = getParentElement(currentElement);
+            let currentElement: Element | null = element;
+
+            while(currentElement) {
+                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+
+                if(
+                    (style.display === "none")
+                    || (parseFloat(style.opacity) === 0)
+                    || (style.contentVisibility === "hidden")
+                ) {
+                    return {
+                        isInteractive: false,
+                        reason: "invisible"
+                    };
+                }
+
+                currentElement = getParentElement(currentElement);
+            }
         }
     }
 
     if(checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
-        const rect: DOMRect | null = element.getBoundingClientRect();
+        const geometryTarget: Element = getGeometryTarget(element);
+        const geometryStyle: CSSStyleDeclaration = (geometryTarget === element)
+            ? style
+            : getComputedStyle(geometryTarget);
+        const rect: DOMRect = geometryTarget.getBoundingClientRect();
 
         if(
             checks.collapsed
             && (rect.width <= 0 || rect.height <= 0)
             && (
-                (style.overflow !== "visible")
-                || [ ...element.childNodes ]
+                (geometryStyle.overflow !== "visible")
+                || [ ...geometryTarget.childNodes ]
                     .every(node => (node.nodeType === Node.TEXT_NODE) && !(node as Text).textContent.trim().length)
             )
         ) {
@@ -209,59 +255,74 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
 
         if(checks.clipped) {
-            let currentElement: Element | null = getParentElement(element);
- 
-            while(currentElement) {
-                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
- 
-                const clipsX: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
-                const clipsY: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
-                const scrollsX: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
-                const scrollsY: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
- 
-                if(clipsX || clipsY) {
-                    const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
- 
-                    if(
-                           (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom))
-                        || (clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right))
-                    ) {
-                        return {
-                            isInteractive: false,
-                            reason: "clipped"
-                        };
+            const position: string = style.position;
+
+            let currentElement: Element | null = getParentElement(geometryTarget);
+            let foundContainerBlock: boolean = (position !== "absolute");
+
+            if(position !== "fixed") {
+                while(currentElement) {
+                    const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+
+                    if(!foundContainerBlock) {
+                        if(CONTAINER_STYLE_POSITION_VALUES.includes(style.position)) {
+                            foundContainerBlock = true;
+                        } else {
+                            currentElement = getParentElement(currentElement);
+
+                            continue;
+                        }
                     }
-                }
- 
-                if(scrollsX || scrollsY) {
-                    const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
-                    const localTop: number = rect.top - ancestorRect.top + currentElement.scrollTop;
-                    const localBottom: number = rect.bottom - ancestorRect.top + currentElement.scrollTop;
-                    const localLeft: number = rect.left - ancestorRect.left + currentElement.scrollLeft;
-                    const localRight: number = rect.right - ancestorRect.left + currentElement.scrollLeft;
- 
-                    if(
-                           (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight))
-                        || (scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth))
-                    ) {
-                        return {
-                            isInteractive: false,
-                            reason: "clipped"
-                        };
+
+                    const clipsX: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
+                    const clipsY: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
+                    const scrollsX: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
+                    const scrollsY: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
+
+                    if(clipsX || clipsY) {
+                        const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+
+                        if(
+                            (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom))
+                            || (clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right))
+                        ) {
+                            return {
+                                isInteractive: false,
+                                reason: "clipped"
+                            };
+                        }
                     }
+
+                    if(scrollsX || scrollsY) {
+                        const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+
+                        const localTop: number = rect.top - ancestorRect.top + currentElement.scrollTop;
+                        const localBottom: number = rect.bottom - ancestorRect.top + currentElement.scrollTop;
+                        const localLeft: number = rect.left - ancestorRect.left + currentElement.scrollLeft;
+                        const localRight: number = rect.right - ancestorRect.left + currentElement.scrollLeft;
+
+                        if(
+                            (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight))
+                            || (scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth))
+                        ) {
+                            return {
+                                isInteractive: false,
+                                reason: "clipped"
+                            };
+                        }
+                    }
+
+                    currentElement = getParentElement(currentElement);
                 }
- 
-                currentElement = getParentElement(currentElement);
             }
         }
-
 
         if(checks.offViewport) {
             const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
             const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
- 
+
             if(
-                   (rect.bottom <= 0)
+                (rect.bottom <= 0)
                 || (rect.right <= 0)
                 || (rect.left >= viewportWidth)
                 || (rect.top >= viewportHeight)
@@ -275,16 +336,15 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
 
         if(checks.occluded) {
             const area: number = rect.width * rect.height;
-            const occlusionSamples: number = Math.max(1, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
+            const occlusionSamples: number = Math.max(MIN_OCCLUSION_SAMPLES, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
 
-            if(isElementOccluded(element, occlusionSamples)) {
+            if(isElementOccluded(geometryTarget, occlusionSamples)) {
                 return {
                     isInteractive: false,
                     reason: "occluded"
                 };
             }
         }
-
     }
 
     return {

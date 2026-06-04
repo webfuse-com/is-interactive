@@ -37,17 +37,32 @@ function generateSamplePoints(rect, samples) {
   }
   return samplePoints;
 }
+function composedContains(ancestor, node) {
+  while (node) {
+    if (node === ancestor) return true;
+    const parent = node.parentNode;
+    if (parent) {
+      node = parent;
+      continue;
+    }
+    if (node.host instanceof Element) {
+      node = node.host;
+      continue;
+    }
+    break;
+  }
+  return false;
+}
 function isElementOnHit(element, rect, samples, viewportWidth, viewportHeight) {
-  const root = element.getRootNode();
   const points = generateSamplePoints(rect, samples);
   for (const point of points) {
     const x = point[0];
     const y = point[1];
     if (x < 0 || y < 0 || x >= viewportWidth || y >= viewportHeight) continue;
-    const stack = root.elementsFromPoint(x, y) ?? [];
+    const stack = document.elementsFromPoint(x, y) ?? [];
     if (stack.length === 0) continue;
     const hitElement = stack[0];
-    if (hitElement === element || element.contains(hitElement) || hitElement.contains(element)) return true;
+    if (hitElement === element || composedContains(element, hitElement) || composedContains(hitElement, element)) return true;
   }
   return false;
 }

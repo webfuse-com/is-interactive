@@ -8,13 +8,6 @@ import "./test.js";
 const TEST_NAME = "checkInteractivity";
 const TESTS = [
     {
-        name: "notElement",
-        expected: {
-            isInteractive: false,
-            reason: "notElement"
-        }
-    },
-    {
         name: "ariaHidden",
         expected: {
             isInteractive: false,
@@ -135,6 +128,32 @@ const TESTS = [
         }
     },
     {
+        name: "modalBlocked.true.1",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
+        name: "modalBlocked.true.2",
+        expected: {
+            isInteractive: true
+        }
+    },
+    {
+        name: "modalBlocked.false",
+        expected: {
+            isInteractive: false,
+            reason: "modalBlocked"
+        }
+    },
+    {
+        name: "notElement",
+        expected: {
+            isInteractive: false,
+            reason: "notElement"
+        }
+    },
+    {
         name: "occluded.full",
         expected: {
             isInteractive: false,
@@ -229,7 +248,7 @@ test("checkInteractivity()", async () => {
                     `Element is${!actual.isInteractive ? " not" : ""} interactive`
                 );
 
-                !reference.assertSuccess
+                (!actual.isInteractive && !reference.assertSuccess)
                     && assertEqual(
                         actual.reason,
                         reference.expected.reason,

@@ -1,5 +1,6 @@
 export interface InteractivityChecks {
     disconnected: boolean;
+    modalBlocked: boolean;
     hidden: boolean;
     inert: boolean;
     disabled: boolean;
