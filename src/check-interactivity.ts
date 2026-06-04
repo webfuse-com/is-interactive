@@ -103,6 +103,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         clipped: true,
         occluded: true,
         // false
+        offScrolled: false, // consider full document
         offViewport: false, // consider full document
         ariaHidden: false,  // might be exclusive to non-GUI navigation
 
@@ -233,7 +234,13 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         }
     }
 
-    if(checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
+    if(
+        checks.collapsed
+        || checks.clipped
+        || checks.offScrolled
+        || checks.offViewport
+        || checks.occluded
+    ) {
         const geometryTarget: Element = getGeometryTarget(element);
         const geometryStyle: CSSStyleDeclaration = (geometryTarget === element)
             ? style
@@ -255,19 +262,24 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             };
         }
 
-        if(checks.clipped) {
-            const position: string = style.position;
-
+        if(checks.clipped || checks.offScrolled) {
             let currentElement: Element | null = getParentElement(geometryTarget);
-            let foundContainerBlock: boolean = (position !== "absolute");
 
-            if(position !== "fixed") {
+            let hasContainer: boolean = (geometryStyle.position !== "absolute");
+            let isScrolledOut: boolean = false;
+
+            let effectiveTop: number = rect.top;
+            let effectiveBottom: number = rect.bottom;
+            let effectiveLeft: number = rect.left;
+            let effectiveRight: number = rect.right;
+
+            if(geometryStyle.position !== "fixed") {
                 while(currentElement) {
                     const style: CSSStyleDeclaration = getComputedStyle(currentElement);
 
-                    if(!foundContainerBlock) {
+                    if(!hasContainer) {
                         if(CONTAINER_STYLE_POSITION_VALUES.includes(style.position)) {
-                            foundContainerBlock = true;
+                            hasContainer = true;
                         } else {
                             currentElement = getParentElement(currentElement);
 
@@ -280,71 +292,133 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                     const scrollsX: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowX);
                     const scrollsY: boolean = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style.overflowY);
 
-                    if(clipsX || clipsY) {
+                    if(clipsX || clipsY || scrollsX || scrollsY) {
                         const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
 
+                        const boxTop: number = ancestorRect.top + currentElement.clientTop;
+                        const boxBottom: number = boxTop + currentElement.clientHeight;
+                        const boxLeft: number = ancestorRect.left + currentElement.clientLeft;
+                        const boxRight: number = boxLeft + currentElement.clientWidth;
+
                         if(
-                            (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom))
-                            || (clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right))
+                            checks.clipped
+                            && (
+                                (clipsX && (effectiveLeft >= boxRight || effectiveRight <= boxLeft))
+                                || (clipsY && (effectiveTop >= boxBottom || effectiveBottom <= boxTop))
+                            )
                         ) {
                             return {
                                 isInteractive: false,
                                 reason: "clipped"
                             };
                         }
-                    }
 
-                    if(scrollsX || scrollsY) {
-                        const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
+                        if(scrollsX || scrollsY) {
+                            const localTop: number = effectiveTop - boxTop + currentElement.scrollTop;
+                            const localBottom: number = effectiveBottom - boxTop + currentElement.scrollTop;
+                            const localLeft: number = effectiveLeft - boxLeft + currentElement.scrollLeft;
+                            const localRight: number = effectiveRight - boxLeft + currentElement.scrollLeft;
 
-                        const localTop: number = rect.top - ancestorRect.top + currentElement.scrollTop;
-                        const localBottom: number = rect.bottom - ancestorRect.top + currentElement.scrollTop;
-                        const localLeft: number = rect.left - ancestorRect.left + currentElement.scrollLeft;
-                        const localRight: number = rect.right - ancestorRect.left + currentElement.scrollLeft;
+                            if(checks.clipped) {
+                                if(
+                                    (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight))
+                                    || (scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth))
+                                ) {
+                                    return {
+                                        isInteractive: false,
+                                        reason: "clipped"
+                                    };
+                                }
+                            }
 
-                        if(
-                            (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight))
-                            || (scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth))
-                        ) {
-                            return {
-                                isInteractive: false,
-                                reason: "clipped"
-                            };
+                            if(
+                                (scrollsX && (effectiveLeft >= boxRight || effectiveRight <= boxLeft))
+                                || (scrollsY && (effectiveTop >= boxBottom || effectiveBottom <= boxTop))
+                            ) {
+                                isScrolledOut = true;
+
+                                effectiveTop = boxTop;
+                                effectiveBottom = boxBottom;
+                                effectiveLeft = boxLeft;
+                                effectiveRight = boxRight;
+                            }
                         }
                     }
 
                     currentElement = getParentElement(currentElement);
                 }
             }
+
+            if(checks.clipped) {
+                if(geometryStyle.position === "fixed") {
+                    const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
+                    const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
+
+                    if(
+                        (effectiveTop >= viewportHeight)
+                        || (effectiveBottom <= 0)
+                        || (effectiveLeft >= viewportWidth)
+                        || (effectiveRight <= 0)
+                    ) {
+                        return {
+                            isInteractive: false,
+                            reason: "clipped"
+                        };
+                    }
+                } else {
+                    const scrollWidth: number = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
+                    const scrollHeight: number = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
+
+                    const top: number = effectiveTop + window.scrollY;
+                    const bottom: number = effectiveBottom + window.scrollY;
+                    const left: number = effectiveLeft + window.scrollX;
+                    const right: number = effectiveRight + window.scrollX;
+
+                    if(
+                        (top >= scrollHeight)
+                        || (bottom <= 0)
+                        || (left >= scrollWidth)
+                        || (right <= 0)
+                    ) {
+                        return {
+                            isInteractive: false,
+                            reason: "clipped"
+                        };
+                    }
+                }
+            }
+
+            if(checks.offScrolled && isScrolledOut) {
+                return {
+                    isInteractive: false,
+                    reason: "offScrolled"
+                };
+            }
         }
 
         if(checks.offViewport) {
-            if( [ "fixed", "absolute" ].includes(geometryStyle.position)) {
-                const scrollWidth: number = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
-                const scrollHeight: number = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
+            const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
+            const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
 
-                const top: number = rect.top + window.scrollY;
-                const bottom: number = rect.bottom + window.scrollY;
-                const left: number = rect.left + window.scrollX;
-                const right: number = rect.right + window.scrollX;
-
-                if(
-                    (top >= scrollHeight)
-                    || (bottom <= 0)
-                    || (left >= scrollWidth)
-                    || (right <= 0)
-                ) {
-                    return {
-                        isInteractive: false,
-                        reason: "offViewport"
-                    };
-                }
+            if(
+                (rect.top >= viewportHeight)
+                || (rect.bottom <= 0)
+                || (rect.left >= viewportWidth)
+                || (rect.right <= 0)
+            ) {
+                return {
+                    isInteractive: false,
+                    reason: "offViewport"
+                };
             }
         }
 
         if(checks.occluded) {
             const area: number = rect.width * rect.height;
-            const occlusionSamples: number = Math.max(MIN_OCCLUSION_SAMPLES, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000)));
+            const occlusionSamples: number = Math.max(
+                MIN_OCCLUSION_SAMPLES,
+                Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000))
+            );
 
             if(isElementOccluded(geometryTarget, occlusionSamples)) {
                 return {

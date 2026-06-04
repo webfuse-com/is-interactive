@@ -235,6 +235,8 @@
       clipped: true,
       occluded: true,
       // false
+      offScrolled: false,
+      // consider full document
       offViewport: false,
       // consider full document
       ariaHidden: false,
@@ -335,7 +337,7 @@
         }
       }
     }
-    if (checks.collapsed || checks.clipped || checks.offViewport || checks.occluded) {
+    if (checks.collapsed || checks.clipped || checks.offScrolled || checks.offViewport || checks.occluded) {
       const geometryTarget = getGeometryTarget(element);
       const geometryStyle = geometryTarget === element ? style : getComputedStyle(geometryTarget);
       const rect = geometryTarget.getBoundingClientRect();
@@ -345,16 +347,20 @@
           reason: "collapsed"
         };
       }
-      if (checks.clipped) {
-        const position = style.position;
+      if (checks.clipped || checks.offScrolled) {
         let currentElement = getParentElement(geometryTarget);
-        let foundContainerBlock = position !== "absolute";
-        if (position !== "fixed") {
+        let hasContainer = geometryStyle.position !== "absolute";
+        let isScrolledOut = false;
+        let effectiveTop = rect.top;
+        let effectiveBottom = rect.bottom;
+        let effectiveLeft = rect.left;
+        let effectiveRight = rect.right;
+        if (geometryStyle.position !== "fixed") {
           while (currentElement) {
             const style2 = getComputedStyle(currentElement);
-            if (!foundContainerBlock) {
+            if (!hasContainer) {
               if (CONTAINER_STYLE_POSITION_VALUES.includes(style2.position)) {
-                foundContainerBlock = true;
+                hasContainer = true;
               } else {
                 currentElement = getParentElement(currentElement);
                 continue;
@@ -364,51 +370,91 @@
             const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowY);
             const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowX);
             const scrollsY = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowY);
-            if (clipsX || clipsY) {
+            if (clipsX || clipsY || scrollsX || scrollsY) {
               const ancestorRect = currentElement.getBoundingClientRect();
-              if (clipsY && (rect.bottom <= ancestorRect.top || rect.top >= ancestorRect.bottom) || clipsX && (rect.right <= ancestorRect.left || rect.left >= ancestorRect.right)) {
+              const boxTop = ancestorRect.top + currentElement.clientTop;
+              const boxBottom = boxTop + currentElement.clientHeight;
+              const boxLeft = ancestorRect.left + currentElement.clientLeft;
+              const boxRight = boxLeft + currentElement.clientWidth;
+              if (checks.clipped && (clipsX && (effectiveLeft >= boxRight || effectiveRight <= boxLeft) || clipsY && (effectiveTop >= boxBottom || effectiveBottom <= boxTop))) {
                 return {
                   isInteractive: false,
                   reason: "clipped"
                 };
               }
-            }
-            if (scrollsX || scrollsY) {
-              const ancestorRect = currentElement.getBoundingClientRect();
-              const localTop = rect.top - ancestorRect.top + currentElement.scrollTop;
-              const localBottom = rect.bottom - ancestorRect.top + currentElement.scrollTop;
-              const localLeft = rect.left - ancestorRect.left + currentElement.scrollLeft;
-              const localRight = rect.right - ancestorRect.left + currentElement.scrollLeft;
-              if (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight) || scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth)) {
-                return {
-                  isInteractive: false,
-                  reason: "clipped"
-                };
+              if (scrollsX || scrollsY) {
+                const localTop = effectiveTop - boxTop + currentElement.scrollTop;
+                const localBottom = effectiveBottom - boxTop + currentElement.scrollTop;
+                const localLeft = effectiveLeft - boxLeft + currentElement.scrollLeft;
+                const localRight = effectiveRight - boxLeft + currentElement.scrollLeft;
+                if (checks.clipped) {
+                  if (scrollsY && (localBottom <= 0 || localTop >= currentElement.scrollHeight) || scrollsX && (localRight <= 0 || localLeft >= currentElement.scrollWidth)) {
+                    return {
+                      isInteractive: false,
+                      reason: "clipped"
+                    };
+                  }
+                }
+                if (scrollsX && (effectiveLeft >= boxRight || effectiveRight <= boxLeft) || scrollsY && (effectiveTop >= boxBottom || effectiveBottom <= boxTop)) {
+                  isScrolledOut = true;
+                  effectiveTop = boxTop;
+                  effectiveBottom = boxBottom;
+                  effectiveLeft = boxLeft;
+                  effectiveRight = boxRight;
+                }
               }
             }
             currentElement = getParentElement(currentElement);
           }
         }
+        if (checks.clipped) {
+          if (geometryStyle.position === "fixed") {
+            const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+            const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+            if (effectiveTop >= viewportHeight || effectiveBottom <= 0 || effectiveLeft >= viewportWidth || effectiveRight <= 0) {
+              return {
+                isInteractive: false,
+                reason: "clipped"
+              };
+            }
+          } else {
+            const scrollWidth = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
+            const scrollHeight = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
+            const top = effectiveTop + window.scrollY;
+            const bottom = effectiveBottom + window.scrollY;
+            const left = effectiveLeft + window.scrollX;
+            const right = effectiveRight + window.scrollX;
+            if (top >= scrollHeight || bottom <= 0 || left >= scrollWidth || right <= 0) {
+              return {
+                isInteractive: false,
+                reason: "clipped"
+              };
+            }
+          }
+        }
+        if (checks.offScrolled && isScrolledOut) {
+          return {
+            isInteractive: false,
+            reason: "offScrolled"
+          };
+        }
       }
       if (checks.offViewport) {
-        if (["fixed", "absolute"].includes(geometryStyle.position)) {
-          const scrollWidth = Math.max(document.documentElement.scrollWidth, document.documentElement.clientWidth);
-          const scrollHeight = Math.max(document.documentElement.scrollHeight, document.documentElement.clientHeight);
-          const top = rect.top + window.scrollY;
-          const bottom = rect.bottom + window.scrollY;
-          const left = rect.left + window.scrollX;
-          const right = rect.right + window.scrollX;
-          if (top >= scrollHeight || bottom <= 0 || left >= scrollWidth || right <= 0) {
-            return {
-              isInteractive: false,
-              reason: "offViewport"
-            };
-          }
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        if (rect.top >= viewportHeight || rect.bottom <= 0 || rect.left >= viewportWidth || rect.right <= 0) {
+          return {
+            isInteractive: false,
+            reason: "offViewport"
+          };
         }
       }
       if (checks.occluded) {
         const area = rect.width * rect.height;
-        const occlusionSamples = Math.max(MIN_OCCLUSION_SAMPLES, Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3)));
+        const occlusionSamples = Math.max(
+          MIN_OCCLUSION_SAMPLES,
+          Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3))
+        );
         if (isElementOccluded(geometryTarget, occlusionSamples)) {
           return {
             isInteractive: false,

@@ -9,195 +9,168 @@ const TEST_NAME = "checkInteractivity";
 const TESTS = [
     {
         name: "ariaHidden",
-        expected: {
-            isInteractive: false,
-            reason: "ariaHidden"
-        }
+        check: "ariaHidden",
+        expected: false
     },
     {
-        name: "clipped.true",
-        expected: {
-            isInteractive: true
-        }
+        name: "clipped.true.1",
+        check: "clipped",
+        expected: true
     },
     {
-        name: "clipped.false",
-        expected: {
-            isInteractive: false,
-            reason: "clipped"
-        }
+        name: "clipped.true.2",
+        check: "clipped",
+        expected: true
     },
     {
-        name: "clipped.scrollable.true",
-        expected: {
-            isInteractive: true
-        }
+        name: "clipped.false.1",
+        check: "clipped",
+        expected: false
     },
     {
-        name: "clipped.scrollable.false",
-        expected: {
-            isInteractive: false,
-            reason: "clipped"
-        }
+        name: "clipped.false.2",
+        check: "clipped",
+        expected: false
+    },
+    {
+        name: "clipped.false.3",
+        check: "clipped",
+        expected: false
     },
     {
         name: "collapsed",
-        expected: {
-            isInteractive: false,
-            reason: "collapsed"
-        }
+        check: "collapsed",
+        expected: false
     },
     {
         name: "collapsed.overflow",
-        expected: {
-            isInteractive: true
-        }
+        check: "collapsed",
+        expected: true
     },
     {
         name: "disabled",
-        expected: {
-            isInteractive: false,
-            reason: "disabled"
-        }
+        check: "disabled",
+        expected: false
     },
     {
         name: "disabled.fieldset",
-        expected: {
-            isInteractive: false,
-            reason: "disabled"
-        }
+        check: "disabled",
+        expected: false
     },
     {
         name: "disabled.arbitrary",
-        expected: {
-            isInteractive: true
-        }
+        check: "disabled",
+        expected: true
     },
     {
         name: "disconnected",
-        expected: {
-            isInteractive: false,
-            reason: "disconnected"
-        }
+        check: "disconnected",
+        expected: false
     },
     {
         name: "hidden.true.1",
-        expected: {
-            isInteractive: true
-        }
+        check: "hidden",
+        expected: true
     },
     {
         name: "hidden.true.2",
-        expected: {
-            isInteractive: true
-        }
+        check: "hidden",
+        expected: true
     },
     {
         name: "hidden.false",
-        expected: {
-            isInteractive: false,
-            reason: "hidden"
-        }
+        check: "hidden",
+        expected: false
     },
     {
         name: "inert",
-        expected: {
-            isInteractive: false,
-            reason: "inert"
-        }
+        check: "inert",
+        expected: false
     },
     {
         name: "invisible.display",
-        expected: {
-            isInteractive: false,
-            reason: "invisible"
-        }
+        check: "invisible",
+        expected: false
     },
     {
         name: "invisible.opacity",
-        expected: {
-            isInteractive: false,
-            reason: "invisible"
-        }
+        check: "invisible",
+        expected: false
     },
     {
         name: "invisible.visibility",
-        expected: {
-            isInteractive: false,
-            reason: "invisible"
-        }
+        check: "invisible",
+        expected: false
     },
     {
         name: "modalBlocked.true.1",
-        expected: {
-            isInteractive: true
-        }
+        check: "modalBlocked",
+        expected: true
     },
     {
         name: "modalBlocked.true.2",
-        expected: {
-            isInteractive: true
-        }
+        check: "modalBlocked",
+        expected: true
     },
     {
         name: "modalBlocked.false",
-        expected: {
-            isInteractive: false,
-            reason: "modalBlocked"
-        }
+        check: "modalBlocked",
+        expected: false
     },
     {
         name: "notElement",
-        expected: {
-            isInteractive: false,
-            reason: "notElement"
-        }
+        check: "notElement",
+        expected: false
     },
     {
-        name: "occluded.full",
-        expected: {
-            isInteractive: false,
-            reason: "occluded"
-        }
+        name: "occluded.false",
+        check: "occluded",
+        expected: false
     },
     {
-        name: "occluded.partial",
-        expected: {
-            isInteractive: true
-        }
+        name: "occluded.true.1",
+        check: "occluded",
+        expected: true
     },
     {
-        name: "offViewport.full",
-        expected: {
-            isInteractive: false,
-            reason: "offViewport"
-        }
+        name: "occluded.true.2",
+        check: "occluded",
+        expected: true
     },
     {
-        name: "offViewport.partial",
-        expected: {
-            isInteractive: true
-        }
+        name: "offScrolled.false",
+        check: "offScrolled",
+        expected: false
+    },
+    {
+        name: "offScrolled.true",
+        check: "offScrolled",
+        expected: true
+    },
+    {
+        name: "offViewport.false",
+        check: "offViewport",
+        expected: false
+    },
+    {
+        name: "offViewport.true",
+        check: "offViewport",
+        expected: true
     },
     {
         name: "unclickable",
-        expected: {
-            isInteractive: false,
-            reason: "unclickable"
-        }
+        check: "unclickable",
+        expected: false
     },
     {
         name: "unclickable.restore.true",
-        expected: {
-            isInteractive: true
-        }
+        check: "unclickable",
+        expected: true
     },
     {
         name: "unclickable.restore.false",
-        expected: {
-            isInteractive: false,
-            reason: "unclickable"
-        }
+        check: "unclickable",
+        expected: false
     }
 ];
 
@@ -210,7 +183,7 @@ test("checkInteractivity()", async () => {
                     join(import.meta.dirname, TEST_NAME, `${reference.name}.test.html`)
                 }`;
 
-                const returnValue = await runBrowser(testFileURL, async () => {
+                const returnValue = await runBrowser(testFileURL, async check => {
                     const TARGET_ELEMENT_KEY = "TARGET";
 
                     try {
@@ -219,8 +192,22 @@ test("checkInteractivity()", async () => {
                                 window[TARGET_ELEMENT_KEY]
                                 ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`),
                                 {
-                                    ariaHidden: true,
-                                    offViewport: true
+                                    clipped: false,
+                                    collapsed: false,
+                                    disabled: false,
+                                    disconnected: false,
+                                    hidden: false,
+                                    inert: false,
+                                    invisible: false,
+                                    modalBlocked: false,
+                                    occluded: false,
+                                    unclickable: false,
+                                    ariaHidden: false,
+                                    offScrolled: false,
+                                    offViewport: false,
+
+                                    // only enable tested check
+                                    [ check ]: true,
                                 }
                             )
                         };
@@ -229,7 +216,7 @@ test("checkInteractivity()", async () => {
                             error: err?.message || String(err)
                         };
                     }
-                });
+                }, [ reference.check ]);
 
                 if(returnValue.error) {
                     console.error(`\x1b[31m${returnValue.error}\x1b[0m`);
@@ -245,14 +232,14 @@ test("checkInteractivity()", async () => {
 
                 assertEqual(
                     actual.isInteractive,
-                    reference.expected.isInteractive,
+                    reference.expected,
                     `Element is${!actual.isInteractive ? " not" : ""} interactive`
                 );
 
-                (!actual.isInteractive && !reference.assertSuccess)
+                (!actual.isInteractive && !reference.expected)
                     && assertEqual(
                         actual.reason,
-                        reference.expected.reason,
+                        reference.check,
                         `Invalid failure reason: '${actual.reason}'`
                     );
             })

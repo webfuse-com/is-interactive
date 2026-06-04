@@ -9,8 +9,9 @@ export interface InteractivityChecks {
     unclickable: boolean;
     collapsed: boolean;
     clipped: boolean;
-    occluded: boolean;
+    offScrolled: boolean;
     offViewport: boolean;
+    occluded: boolean;
 }
 
 export interface InteractivityResult {
