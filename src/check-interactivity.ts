@@ -7,8 +7,8 @@ const OVERFLOW_STYLE_CLIP_OFF_VALUES: string[] = [ "hidden", "clip" ];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES: string[] = [ "auto", "scroll" ];
 const CONTAINER_STYLE_POSITION_VALUES = [ "relative", "absolute", "fixed", "sticky" ];
 const OPTION_TAG_NAMES: string[] = [ "OPTION", "OPTGROUP" ];
-const MIN_OCCLUSION_SAMPLES = 1;
-const MAX_OCCLUSION_SAMPLES: number = 32;
+const MIN_OCCLUSION_SAMPLES = 6;
+const MAX_OCCLUSION_SAMPLES: number = 42;
 
 
 function readProperty<T>(element: Element, property: string): T | undefined {

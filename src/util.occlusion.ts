@@ -5,69 +5,75 @@ import { scrollIntoViewSynchronously } from "./util.scroll.js";
  * Distribute sample points across a rect, starting at the center.
  * Additional sample points are scattered uniformly across the rect.
  */
-function generateSamplePoints(rect: DOMRect, samples: number): [number, number][] {
+function generateSamplePoints(rect: DOMRect, samples: number): [ number, number ][] {
     const sampleCount: number = Math.max(1, Math.floor(samples));
- 
+
     const centerX: number = rect.left + rect.width / 2;
     const centerY: number = rect.top + rect.height / 2;
- 
-    const samplePoints: [number, number][] = [ [ centerX, centerY ] ];
+
+    const samplePoints: [ number, number ][] = [ [ centerX, centerY ] ];
 
     if(sampleCount === 1) return samplePoints;
 
-    const aspectRatio: number =rect.width / Math.max(1, rect.height);
+    if(rect.width < 2 || rect.height < 2) return samplePoints;
 
-    const gridY: number = Math.max(1, Math.round(Math.sqrt(sampleCount / aspectRatio)));
-    const gridX: number = Math.max(1, Math.ceil(sampleCount / gridY));
+    const aspectRatio: number = rect.width / Math.max(1, rect.height);
+    const gridY: number = Math.max(1, Math.min(sampleCount, Math.round(Math.sqrt(sampleCount / Math.max(0.01, aspectRatio)))));
+    const gridX: number = Math.max(1, Math.min(sampleCount, Math.ceil(sampleCount / gridY)));
 
-    const left: number = rect.left + 1;
-    const right: number = rect.right - 1;
     const top: number = rect.top + 1;
     const bottom: number = rect.bottom - 1;
+    const left: number = rect.left + 1;
+    const right: number = rect.right - 1;
 
     const stepX: number = (gridX > 1) ? (right - left) / (gridX - 1) : 0;
     const stepY: number = (gridY > 1) ? (bottom - top) / (gridY - 1) : 0;
 
-    const candidates: Array<[number, number, number]> = [];
+    const seen: Set<string> = new Set();
+
+    seen.add(`${Math.round(centerX)},${Math.round(centerY)}`);
+
+    const candidates: Array<[ number, number, number ]> = [];
 
     for(let row: number = 0; row < gridY; row++) {
         for(let col: number = 0; col < gridX; col++) {
             const x: number = gridX > 1 ? left + col * stepX : centerX;
             const y: number = gridY > 1 ? top + row * stepY : centerY;
 
+            const key: string = `${Math.round(x)},${Math.round(y)}`;
+
+            if(seen.has(key)) continue;
+
+            seen.add(key);
+
             const dx: number = x - centerX;
             const dy: number = y - centerY;
             const distanceSquared: number = dx * dx + dy * dy;
 
-            candidates.push([x, y, distanceSquared]);
+            candidates.push([ x, y, distanceSquared ]);
         }
     }
 
-    candidates
-        .sort((a: [number, number, number], b: [number, number, number]): number => {
-            return a[2] - b[2];
-        });
+    candidates.sort((a, b) => a[2] - b[2]);
 
     for(let i: number = 0; i < candidates.length; i++) {
         if(samplePoints.length >= sampleCount) break;
 
-        const x: number = candidates[i][0];
-        const y: number = candidates[i][1];
-
-        if(
-               (Math.abs(x - centerX) < 0.5)
-            && (Math.abs(y - centerY) < 0.5)
-        ) continue;
-
-        samplePoints.push([ x, y ]);
+        samplePoints.push([ candidates[i][0], candidates[i][1] ]);
     }
 
     return samplePoints;
 }
 
 function composedContains(ancestor: Node, node: Node | null): boolean {
+    const visited: Set<Node> = new Set();
+
     while(node) {
         if(node === ancestor) return true;
+
+        if(visited.has(node)) break;
+
+        visited.add(node);
 
         const parent: Node | null = node.parentNode;
 

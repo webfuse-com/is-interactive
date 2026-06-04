@@ -4,8 +4,8 @@ const OVERFLOW_STYLE_CLIP_OFF_VALUES = ["hidden", "clip"];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
 const CONTAINER_STYLE_POSITION_VALUES = ["relative", "absolute", "fixed", "sticky"];
 const OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
-const MIN_OCCLUSION_SAMPLES = 1;
-const MAX_OCCLUSION_SAMPLES = 32;
+const MIN_OCCLUSION_SAMPLES = 6;
+const MAX_OCCLUSION_SAMPLES = 42;
 function readProperty(element, property) {
   if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
   const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;

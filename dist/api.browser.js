@@ -1,8 +1,8 @@
 "use strict";
 (() => {
   // src/util.scroll.ts
-  var nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop").set;
-  var nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft").set;
+  var nativeScrollTop = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTop"))?.set;
+  var nativeScrollLeft = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollLeft"))?.set;
   var nativeWindowScrollTo = window.scrollTo.bind(window);
   function computeScrollDelta(near, far, viewport) {
     if (near >= 0 && far <= viewport) return 0;
@@ -17,27 +17,33 @@
   }
   function scrollIntoViewSynchronously(element) {
     const restoreCbs = [];
+    if (!nativeScrollLeft || !nativeScrollTop) return restoreCbs;
+    const visited = /* @__PURE__ */ new Set();
     let nextElement = resolveParent(element);
     while (nextElement) {
+      if (visited.has(nextElement)) break;
+      visited.add(nextElement);
       const currentElement = nextElement;
       nextElement = resolveParent(currentElement);
       if (!(currentElement instanceof HTMLElement)) continue;
-      const isScrollable = currentElement.scrollHeight > currentElement.clientHeight || currentElement.scrollWidth > currentElement.clientWidth;
-      if (!isScrollable) continue;
+      const currentStyle = getComputedStyle(currentElement);
+      const scrollableX = currentElement.scrollWidth > currentElement.clientWidth && (currentStyle.overflowX === "auto" || currentStyle.overflowX === "scroll");
+      const scrollableY = currentElement.scrollHeight > currentElement.clientHeight && (currentStyle.overflowY === "auto" || currentStyle.overflowY === "scroll");
+      if (!scrollableX && !scrollableY) continue;
       const previousLeft = currentElement.scrollLeft;
       const previousTop = currentElement.scrollTop;
       const ancestorRect = currentElement.getBoundingClientRect();
       const elementRect2 = element.getBoundingClientRect();
-      const deltaX2 = computeScrollDelta(
+      const deltaX2 = scrollableX ? computeScrollDelta(
         elementRect2.left - ancestorRect.left,
         elementRect2.right - ancestorRect.left,
         currentElement.clientWidth
-      );
-      const deltaY2 = computeScrollDelta(
+      ) : 0;
+      const deltaY2 = scrollableY ? computeScrollDelta(
         elementRect2.top - ancestorRect.top,
         elementRect2.bottom - ancestorRect.top,
         currentElement.clientHeight
-      );
+      ) : 0;
       if (deltaX2 !== 0 || deltaY2 !== 0) {
         nativeScrollLeft.call(currentElement, previousLeft + deltaX2);
         nativeScrollTop.call(currentElement, previousTop + deltaY2);
@@ -78,41 +84,45 @@
     const centerY = rect.top + rect.height / 2;
     const samplePoints = [[centerX, centerY]];
     if (sampleCount === 1) return samplePoints;
+    if (rect.width < 2 || rect.height < 2) return samplePoints;
     const aspectRatio = rect.width / Math.max(1, rect.height);
-    const gridY = Math.max(1, Math.round(Math.sqrt(sampleCount / aspectRatio)));
-    const gridX = Math.max(1, Math.ceil(sampleCount / gridY));
-    const left = rect.left + 1;
-    const right = rect.right - 1;
+    const gridY = Math.max(1, Math.min(sampleCount, Math.round(Math.sqrt(sampleCount / Math.max(0.01, aspectRatio)))));
+    const gridX = Math.max(1, Math.min(sampleCount, Math.ceil(sampleCount / gridY)));
     const top = rect.top + 1;
     const bottom = rect.bottom - 1;
+    const left = rect.left + 1;
+    const right = rect.right - 1;
     const stepX = gridX > 1 ? (right - left) / (gridX - 1) : 0;
     const stepY = gridY > 1 ? (bottom - top) / (gridY - 1) : 0;
+    const seen = /* @__PURE__ */ new Set();
+    seen.add(`${Math.round(centerX)},${Math.round(centerY)}`);
     const candidates = [];
     for (let row = 0; row < gridY; row++) {
       for (let col = 0; col < gridX; col++) {
         const x = gridX > 1 ? left + col * stepX : centerX;
         const y = gridY > 1 ? top + row * stepY : centerY;
+        const key = `${Math.round(x)},${Math.round(y)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
         const dx = x - centerX;
         const dy = y - centerY;
         const distanceSquared = dx * dx + dy * dy;
         candidates.push([x, y, distanceSquared]);
       }
     }
-    candidates.sort((a, b) => {
-      return a[2] - b[2];
-    });
+    candidates.sort((a, b) => a[2] - b[2]);
     for (let i = 0; i < candidates.length; i++) {
       if (samplePoints.length >= sampleCount) break;
-      const x = candidates[i][0];
-      const y = candidates[i][1];
-      if (Math.abs(x - centerX) < 0.5 && Math.abs(y - centerY) < 0.5) continue;
-      samplePoints.push([x, y]);
+      samplePoints.push([candidates[i][0], candidates[i][1]]);
     }
     return samplePoints;
   }
   function composedContains(ancestor, node) {
+    const visited = /* @__PURE__ */ new Set();
     while (node) {
       if (node === ancestor) return true;
+      if (visited.has(node)) break;
+      visited.add(node);
       const parent = node.parentNode;
       if (parent) {
         node = parent;
@@ -161,8 +171,8 @@
   var OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
   var CONTAINER_STYLE_POSITION_VALUES = ["relative", "absolute", "fixed", "sticky"];
   var OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
-  var MIN_OCCLUSION_SAMPLES = 1;
-  var MAX_OCCLUSION_SAMPLES = 32;
+  var MIN_OCCLUSION_SAMPLES = 6;
+  var MAX_OCCLUSION_SAMPLES = 42;
   function readProperty(element, property) {
     if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
     const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
@@ -462,8 +472,8 @@
       virtualChild = virtualChild.nextElementSibling;
     }
     let hasInteractiveDescendant = false;
-    for (const [l, v] of pairs) {
-      if (filterDOM(l, v, false, checks)) {
+    for (const [liveElement2, virtualElement2] of pairs) {
+      if (filterDOM(liveElement2, virtualElement2, false, checks)) {
         hasInteractiveDescendant = true;
       }
     }
@@ -472,11 +482,7 @@
     if (!keep) removeVirtual(virtualElement);
     return keep;
   }
-  function filterInteractive(dom, checks, virtualDOM) {
-    checks = {
-      occluded: false,
-      ...checks
-    };
+  function filterInteractive(dom, checks = {}, virtualDOM) {
     const liveRoot = dom instanceof Document ? dom.documentElement : dom;
     const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
     filterDOM(liveRoot, virtualRoot, true, checks);

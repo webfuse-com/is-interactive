@@ -1,5 +1,11 @@
-const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")!.set!;
-const nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft")!.set!;
+const nativeScrollTop = (
+    Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop")
+    ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTop")
+)?.set;
+const nativeScrollLeft = (
+    Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft")
+    ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollLeft")
+)?.set;
 const nativeWindowScrollTo = window.scrollTo.bind(window);
 
 
@@ -23,47 +29,59 @@ function resolveParent(node: Element): Element | null {
         : null;
 }
 
-/**
- * Scrolls an element into view by adjusting every scrollable ancestor the minimum amount.
- * Returns an array of restore functions.
- * Using scroll and restore synchronously in the same tick (with instant scrolling), there
- * is no page re-paint happening between scroll and restore; invisible scroll, but element
- * is in viewport for processing.
- */
+
 export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
     const restoreCbs: (() => void)[] = [];
 
+    if(!nativeScrollLeft || !nativeScrollTop) return restoreCbs;
+
+    const visited: Set<Element> = new Set();
     let nextElement: Element | null = resolveParent(element);
 
-    while (nextElement) {
+    while(nextElement) {
+        if(visited.has(nextElement)) break;
+
+        visited.add(nextElement);
+
         const currentElement: Element = nextElement;
 
         nextElement = resolveParent(currentElement);
 
         if(!(currentElement instanceof HTMLElement)) continue;
 
-        const isScrollable = (
-               (currentElement.scrollHeight > currentElement.clientHeight)
-            || (currentElement.scrollWidth  > currentElement.clientWidth)
+        const currentStyle: CSSStyleDeclaration = getComputedStyle(currentElement);
+
+        const scrollableX: boolean = (
+            (currentElement.scrollWidth > currentElement.clientWidth)
+            && (currentStyle.overflowX === "auto" || currentStyle.overflowX === "scroll")
         );
-        if(!isScrollable) continue;
+        const scrollableY: boolean = (
+            (currentElement.scrollHeight > currentElement.clientHeight)
+            && (currentStyle.overflowY === "auto" || currentStyle.overflowY === "scroll")
+        );
+
+        if(!scrollableX && !scrollableY) continue;
 
         const previousLeft: number = currentElement.scrollLeft;
         const previousTop: number = currentElement.scrollTop;
-
         const ancestorRect: DOMRect = currentElement.getBoundingClientRect();
         const elementRect: DOMRect = element.getBoundingClientRect();
 
-        const deltaX = computeScrollDelta(
-            elementRect.left - ancestorRect.left,
-            elementRect.right - ancestorRect.left,
-            currentElement.clientWidth
-        );
-        const deltaY = computeScrollDelta(
-            elementRect.top - ancestorRect.top,
-            elementRect.bottom - ancestorRect.top,
-            currentElement.clientHeight
-        );
+        const deltaX: number = scrollableX
+            ? computeScrollDelta(
+                elementRect.left - ancestorRect.left,
+                elementRect.right - ancestorRect.left,
+                currentElement.clientWidth
+            )
+            : 0;
+
+        const deltaY: number = scrollableY
+            ? computeScrollDelta(
+                elementRect.top - ancestorRect.top,
+                elementRect.bottom - ancestorRect.top,
+                currentElement.clientHeight
+            )
+            : 0;
 
         if((deltaX !== 0) || (deltaY !== 0)) {
             nativeScrollLeft.call(currentElement, previousLeft + deltaX);
@@ -77,10 +95,8 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
         }
     }
 
-    // window-level
     const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
-
     const elementRect: DOMRect = element.getBoundingClientRect();
 
     const deltaX: number = computeScrollDelta(elementRect.left, elementRect.right, viewportWidth);

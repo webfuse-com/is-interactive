@@ -57,8 +57,8 @@ function filterDOM(liveElement, virtualElement, isRoot, checks) {
     virtualChild = virtualChild.nextElementSibling;
   }
   let hasInteractiveDescendant = false;
-  for (const [l, v] of pairs) {
-    if (filterDOM(l, v, false, checks)) {
+  for (const [liveElement2, virtualElement2] of pairs) {
+    if (filterDOM(liveElement2, virtualElement2, false, checks)) {
       hasInteractiveDescendant = true;
     }
   }
@@ -67,11 +67,7 @@ function filterDOM(liveElement, virtualElement, isRoot, checks) {
   if (!keep) removeVirtual(virtualElement);
   return keep;
 }
-function filterInteractive(dom, checks, virtualDOM) {
-  checks = {
-    occluded: false,
-    ...checks
-  };
+function filterInteractive(dom, checks = {}, virtualDOM) {
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
   const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
   filterDOM(liveRoot, virtualRoot, true, checks);

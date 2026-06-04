@@ -40,6 +40,7 @@ function cloneWithShadow(node: Element): Element {
 function removeVirtual(virtual: Element): void {
     const parent: Element | ShadowRoot | null =
         virtual.parentElement ?? (virtual.parentNode as ShadowRoot | null);
+
     parent?.removeChild(virtual);
 }
 
@@ -90,8 +91,8 @@ function filterDOM(
 
     let hasInteractiveDescendant: boolean = false;
 
-    for(const [ l, v ] of pairs) {
-        if(filterDOM(l, v, false, checks)) {
+    for(const [ liveElement, virtualElement ] of pairs) {
+        if(filterDOM(liveElement, virtualElement, false, checks)) {
             hasInteractiveDescendant = true;
         }
     }
@@ -108,14 +109,9 @@ function filterDOM(
 
 export function filterInteractive(
     dom: Document | Element,
-    checks?: Partial<InteractivityChecks>,
+    checks: Partial<InteractivityChecks> = {},
     virtualDOM?: Document | Element
 ): Element {
-    checks = {
-        occluded: false,
-        ...checks
-    };
-
     const liveRoot: Element = (dom instanceof Document)
         ? dom.documentElement
         : dom;

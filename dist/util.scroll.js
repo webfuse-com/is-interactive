@@ -1,5 +1,5 @@
-const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop").set;
-const nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft").set;
+const nativeScrollTop = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTop"))?.set;
+const nativeScrollLeft = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollLeft"))?.set;
 const nativeWindowScrollTo = window.scrollTo.bind(window);
 function computeScrollDelta(near, far, viewport) {
   if (near >= 0 && far <= viewport) return 0;
@@ -14,27 +14,33 @@ function resolveParent(node) {
 }
 function scrollIntoViewSynchronously(element) {
   const restoreCbs = [];
+  if (!nativeScrollLeft || !nativeScrollTop) return restoreCbs;
+  const visited = /* @__PURE__ */ new Set();
   let nextElement = resolveParent(element);
   while (nextElement) {
+    if (visited.has(nextElement)) break;
+    visited.add(nextElement);
     const currentElement = nextElement;
     nextElement = resolveParent(currentElement);
     if (!(currentElement instanceof HTMLElement)) continue;
-    const isScrollable = currentElement.scrollHeight > currentElement.clientHeight || currentElement.scrollWidth > currentElement.clientWidth;
-    if (!isScrollable) continue;
+    const currentStyle = getComputedStyle(currentElement);
+    const scrollableX = currentElement.scrollWidth > currentElement.clientWidth && (currentStyle.overflowX === "auto" || currentStyle.overflowX === "scroll");
+    const scrollableY = currentElement.scrollHeight > currentElement.clientHeight && (currentStyle.overflowY === "auto" || currentStyle.overflowY === "scroll");
+    if (!scrollableX && !scrollableY) continue;
     const previousLeft = currentElement.scrollLeft;
     const previousTop = currentElement.scrollTop;
     const ancestorRect = currentElement.getBoundingClientRect();
     const elementRect2 = element.getBoundingClientRect();
-    const deltaX2 = computeScrollDelta(
+    const deltaX2 = scrollableX ? computeScrollDelta(
       elementRect2.left - ancestorRect.left,
       elementRect2.right - ancestorRect.left,
       currentElement.clientWidth
-    );
-    const deltaY2 = computeScrollDelta(
+    ) : 0;
+    const deltaY2 = scrollableY ? computeScrollDelta(
       elementRect2.top - ancestorRect.top,
       elementRect2.bottom - ancestorRect.top,
       currentElement.clientHeight
-    );
+    ) : 0;
     if (deltaX2 !== 0 || deltaY2 !== 0) {
       nativeScrollLeft.call(currentElement, previousLeft + deltaX2);
       nativeScrollTop.call(currentElement, previousTop + deltaY2);
