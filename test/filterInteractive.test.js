@@ -90,7 +90,9 @@ test("filterInteractive()", async () => {
                                 ariaHidden: true,
                                 offScrolled: true,
                                 offViewport: true
-                            }
+                            },
+                            null,
+                            (element, reason) => console.debug(element, reason)
                         );
 
                         const wrapper = document.createElement('div');

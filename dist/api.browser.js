@@ -501,8 +501,11 @@
     const parent = virtual.parentElement ?? virtual.parentNode;
     parent?.removeChild(virtual);
   }
-  function filterDOM(liveElement, virtualElement, isRoot, checks) {
+  function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive) {
     const result = checkInteractivity(liveElement, checks);
+    if (onNonInteractive && !result.isInteractive) {
+      onNonInteractive(liveElement, result.reason);
+    }
     if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) {
       if (!isRoot) removeVirtual(virtualElement);
       return false;
@@ -528,7 +531,7 @@
     }
     let hasInteractiveDescendant = false;
     for (const [liveElement2, virtualElement2] of pairs) {
-      if (filterDOM(liveElement2, virtualElement2, false, checks)) {
+      if (filterDOM(liveElement2, virtualElement2, false, checks, onNonInteractive)) {
         hasInteractiveDescendant = true;
       }
     }
@@ -537,10 +540,10 @@
     if (!keep) removeVirtual(virtualElement);
     return keep;
   }
-  function filterInteractive(dom, checks = {}, virtualDOM) {
+  function filterInteractive(dom, checks = {}, virtualDOM, onNonInteractive) {
     const liveRoot = dom instanceof Document ? dom.documentElement : dom;
     const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
-    filterDOM(liveRoot, virtualRoot, true, checks);
+    filterDOM(liveRoot, virtualRoot, true, checks, onNonInteractive);
     return virtualRoot;
   }
 

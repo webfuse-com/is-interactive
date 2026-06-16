@@ -48,9 +48,14 @@ function filterDOM(
     liveElement: Element,
     virtualElement: Element,
     isRoot: boolean,
-    checks: Partial<InteractivityChecks>
+    checks: Partial<InteractivityChecks>,
+    onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): boolean {
     const result: InteractivityResult = checkInteractivity(liveElement, checks);
+
+    if (onNonInteractive && !result.isInteractive) {
+        onNonInteractive(liveElement, result.reason);
+    }
 
     if(
         !result.isInteractive
@@ -62,7 +67,7 @@ function filterDOM(
         return false;
     }
 
-    const pairs: [Element, Element][] = [];
+    const pairs: [ Element, Element ][] = [];
 
     const liveShadow: ShadowRoot | null = liveElement.shadowRoot;
     const virtualShadow: ShadowRoot | null = virtualElement.shadowRoot;
@@ -92,7 +97,7 @@ function filterDOM(
     let hasInteractiveDescendant: boolean = false;
 
     for(const [ liveElement, virtualElement ] of pairs) {
-        if(filterDOM(liveElement, virtualElement, false, checks)) {
+        if(filterDOM(liveElement, virtualElement, false, checks, onNonInteractive)) {
             hasInteractiveDescendant = true;
         }
     }
@@ -110,7 +115,8 @@ function filterDOM(
 export function filterInteractive(
     dom: Document | Element,
     checks: Partial<InteractivityChecks> = {},
-    virtualDOM?: Document | Element
+    virtualDOM?: Document | Element,
+    onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): Element {
     const liveRoot: Element = (dom instanceof Document)
         ? dom.documentElement
@@ -119,7 +125,7 @@ export function filterInteractive(
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);
 
-    filterDOM(liveRoot, virtualRoot, true, checks);
+    filterDOM(liveRoot, virtualRoot, true, checks, onNonInteractive);
 
     return virtualRoot;
 }
