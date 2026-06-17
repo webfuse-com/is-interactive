@@ -23,6 +23,16 @@ const TESTS = [
         expected: true
     },
     {
+        name: "clipped.true.3",
+        check: "clipped",
+        expected: true
+    },
+    {
+        name: "clipped.true.4",
+        check: "clipped",
+        expected: true
+    },
+    {
         name: "clipped.false.1",
         check: "clipped",
         expected: false

@@ -265,7 +265,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
         if(checks.clipped || checks.offScrolled) {
             let currentElement: Element | null = getParentElement(geometryTarget);
 
-            let hasContainer: boolean = (geometryStyle.position !== "absolute");
+            let needsContainingBlock: boolean = (geometryStyle.position === "absolute");
             let isScrolledOut: boolean = false;
 
             let effectiveTop: number = rect.top;
@@ -273,19 +273,27 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             let effectiveLeft: number = rect.left;
             let effectiveRight: number = rect.right;
 
-            if(geometryStyle.position !== "fixed") {
+            let escapesAncestorClip: boolean = (geometryStyle.position === "fixed");
+
+            if(!escapesAncestorClip) {
+                try {
+                    escapesAncestorClip = geometryTarget.matches(":modal, :popover-open, :fullscreen");
+                } catch {}
+            }
+
+            if(!escapesAncestorClip) {
                 while(currentElement) {
                     const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+                    const position: string = style.position;
+                    const isContainingBlock: boolean = CONTAINER_STYLE_POSITION_VALUES.includes(position);
 
-                    if(!hasContainer) {
-                        if(CONTAINER_STYLE_POSITION_VALUES.includes(style.position)) {
-                            hasContainer = true;
-                        } else {
-                            currentElement = getParentElement(currentElement);
+                    if(needsContainingBlock && !isContainingBlock) {
+                        currentElement = getParentElement(currentElement);
 
-                            continue;
-                        }
+                        continue;
                     }
+
+                    needsContainingBlock = false;
 
                     const clipsX: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowX);
                     const clipsY: boolean = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style.overflowY);
@@ -343,6 +351,20 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                                 effectiveRight = boxRight;
                             }
                         }
+                    }
+
+                    let isViewportClipped: boolean = (position === "fixed");
+
+                    if(!isViewportClipped) {
+                        try {
+                            isViewportClipped = currentElement.matches(":modal, :popover-open, :fullscreen");
+                        } catch {}
+                    }
+
+                    if(isViewportClipped) break;
+
+                    if(position === "absolute") {
+                        needsContainingBlock = true;
                     }
 
                     currentElement = getParentElement(currentElement);

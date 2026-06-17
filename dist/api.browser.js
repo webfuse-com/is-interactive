@@ -349,23 +349,29 @@
       }
       if (checks.clipped || checks.offScrolled) {
         let currentElement = getParentElement(geometryTarget);
-        let hasContainer = geometryStyle.position !== "absolute";
+        let needsContainingBlock = geometryStyle.position === "absolute";
         let isScrolledOut = false;
         let effectiveTop = rect.top;
         let effectiveBottom = rect.bottom;
         let effectiveLeft = rect.left;
         let effectiveRight = rect.right;
-        if (geometryStyle.position !== "fixed") {
+        let escapesAncestorClip = geometryStyle.position === "fixed";
+        if (!escapesAncestorClip) {
+          try {
+            escapesAncestorClip = geometryTarget.matches(":modal, :popover-open, :fullscreen");
+          } catch {
+          }
+        }
+        if (!escapesAncestorClip) {
           while (currentElement) {
             const style2 = getComputedStyle(currentElement);
-            if (!hasContainer) {
-              if (CONTAINER_STYLE_POSITION_VALUES.includes(style2.position)) {
-                hasContainer = true;
-              } else {
-                currentElement = getParentElement(currentElement);
-                continue;
-              }
+            const position = style2.position;
+            const isContainingBlock = CONTAINER_STYLE_POSITION_VALUES.includes(position);
+            if (needsContainingBlock && !isContainingBlock) {
+              currentElement = getParentElement(currentElement);
+              continue;
             }
+            needsContainingBlock = false;
             const clipsX = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowX);
             const clipsY = OVERFLOW_STYLE_CLIP_OFF_VALUES.includes(style2.overflowY);
             const scrollsX = OVERFLOW_STYLE_SCROLL_OFF_VALUES.includes(style2.overflowX);
@@ -403,6 +409,17 @@
                   effectiveRight = boxRight;
                 }
               }
+            }
+            let isViewportClipped = position === "fixed";
+            if (!isViewportClipped) {
+              try {
+                isViewportClipped = currentElement.matches(":modal, :popover-open, :fullscreen");
+              } catch {
+              }
+            }
+            if (isViewportClipped) break;
+            if (position === "absolute") {
+              needsContainingBlock = true;
             }
             currentElement = getParentElement(currentElement);
           }
