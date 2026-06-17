@@ -4,9 +4,7 @@
             <section h="ariaHidden"></section>
         </header>
         <main>
-            <h1>
-                Test
-            </h1>
+            <h1>Test</h1>
             <section h="clipped">
                 <div style="width: 200px; height: 50px; overflow: hidden;"></div>
             </section>
@@ -28,6 +26,11 @@
             <section h="hidden" class="reserve-space">
                 <div></div>
             </section>
+            <section h="inert"></section>
+            <section h="invisible">
+                <div></div>
+                <div></div>
+            </section>
             <section h="occluded">
                 <!-- fully -->
                 <div>
@@ -41,6 +44,29 @@
                     <div style="position: absolute; top: 90px; left: 90px; width: 35px; height: 100px; background-color: aqua;"></div>
                 </div>
             </section>
+            <section h="unclickable">
+                <div></div>
+                <!-- recovered -->
+                <div style="pointer-events: none;">
+                    <button style="pointer-events: auto;">
+                        Click here
+                    </button>
+                </div>
+            </section>
+            <section h="modalBlocked">
+                <hr>
+            </section>
+            <section>
+                <select>
+                    <option value="o-1">Option 1</option>
+                    <option value="o-2">Option 2</option>
+                </select>
+            </section>
         </main>
+        <footer>
+            <span>
+                2026
+            </span>
+        </footer>
     </body>
 </html>

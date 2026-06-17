@@ -40,6 +40,11 @@ function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive
     if (!isRoot) removeVirtual(virtualElement);
     return false;
   }
+  if (liveElement instanceof HTMLSelectElement && !liveElement.multiple && liveElement.size <= 1) {
+    if (isRoot) return result.isInteractive;
+    if (!result.isInteractive) removeVirtual(virtualElement);
+    return result.isInteractive;
+  }
   const pairs = [];
   const liveShadow = liveElement.shadowRoot;
   const virtualShadow = virtualElement.shadowRoot;

@@ -5,7 +5,9 @@ import { deepEqual } from "assert";
 import puppeteer from "puppeteer";
 
 
-const HEADLESS = !process.argv.slice(2).includes("--no-headless");
+const ARGS = process.argv.slice(2);
+const HEADLESS = !ARGS.includes("--no-headless");
+const NO_HEADLESS_TIMEOUT = ARGS.includes("--timeout") ? parseInt(ARGS[ARGS.indexOf("--timeout") + 1]) : 2000;
 
 let hasError = false;
 
@@ -78,7 +80,7 @@ global.runBrowser = async function(url, inPageCallback, inPageCallbackArgs = [],
             await browser.close();
 
             r();
-        }, optionsWithDefaults.headless ? 0 : 2000));
+        }, optionsWithDefaults.headless ? 0 : NO_HEADLESS_TIMEOUT));
 
         resolve(result);
     });

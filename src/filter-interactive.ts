@@ -13,8 +13,8 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
 
 function cloneWithShadow(node: Element): Element {
     const clone: Element = node.cloneNode(false) as Element;
-
     const shadow: ShadowRoot | null = node.shadowRoot;
+
     if(shadow) {
         const clonedShadow: ShadowRoot = clone.attachShadow({
             mode: shadow.mode,
@@ -67,6 +67,14 @@ function filterDOM(
         return false;
     }
 
+    if((liveElement instanceof HTMLSelectElement) && !liveElement.multiple && (liveElement.size <= 1)) {
+        if(isRoot) return result.isInteractive;
+
+        if(!result.isInteractive) removeVirtual(virtualElement);
+
+        return result.isInteractive;
+    }
+
     const pairs: [ Element, Element ][] = [];
 
     const liveShadow: ShadowRoot | null = liveElement.shadowRoot;
@@ -89,7 +97,7 @@ function filterDOM(
 
     while(liveChild && virtualChild) {
         pairs.push([ liveChild,  virtualChild]);
-        
+
         liveChild = liveChild.nextElementSibling;
         virtualChild = virtualChild.nextElementSibling;
     }
@@ -121,6 +129,7 @@ export function filterInteractive(
     const liveRoot: Element = (dom instanceof Document)
         ? dom.documentElement
         : dom;
+
     const virtualRoot: Element = virtualDOM
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);

@@ -89,7 +89,7 @@ test("filterInteractive()", async () => {
                             {
                                 ariaHidden: true,
                                 offScrolled: true,
-                                offViewport: true
+                                offViewport: false
                             },
                             null,
                             (element, reason) => console.debug(element, reason)
