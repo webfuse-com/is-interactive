@@ -15,7 +15,7 @@
     "test:checkInteractivity": "node ./test/checkInteractivity.test.js",
     "test:filterInteractive": "node ./test/filterInteractive.test.js",
     "test": "npm run test:checkInteractivity && npm run test:filterInteractive",
-    "inject": "node ./inject/inject.js"
+    "debug": "node ./debug/debug.js"
   },
   "repository": {
     "type": "git",
