@@ -6,6 +6,16 @@ const CASCADING_NON_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
   "ariaHidden",
   "invisible"
 ]);
+const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
+  Object.entries({
+    // Do not filter 'styled' inputs (commonly deliberately covered by click-through custom UI)
+    "input": {
+      invisible: false,
+      collapsed: false,
+      occluded: false
+    }
+  })
+);
 function cloneWithShadow(node) {
   const clone = node.cloneNode(false);
   const shadow = node.shadowRoot;
@@ -31,18 +41,23 @@ function removeVirtual(virtual) {
   const parent = virtual.parentElement ?? virtual.parentNode;
   parent?.removeChild(virtual);
 }
-function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive) {
-  const result = checkInteractivity(liveElement, checks);
+function filterDOM(liveElement, virtualElement, isRoot, checks, overrideChecks, onNonInteractive) {
+  const applicableChecks = overrideChecks?.get(liveElement.tagName.toLowerCase()) ?? checks;
+  const result = checkInteractivity(liveElement, applicableChecks);
   if (onNonInteractive && !result.isInteractive) {
     onNonInteractive(liveElement, result.reason);
   }
   if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) {
-    if (!isRoot) removeVirtual(virtualElement);
+    if (!isRoot) {
+      removeVirtual(virtualElement);
+    }
     return false;
   }
   if (liveElement instanceof HTMLSelectElement && !liveElement.multiple && liveElement.size <= 1) {
     if (isRoot) return result.isInteractive;
-    if (!result.isInteractive) removeVirtual(virtualElement);
+    if (!result.isInteractive) {
+      removeVirtual(virtualElement);
+    }
     return result.isInteractive;
   }
   const pairs = [];
@@ -66,7 +81,7 @@ function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive
   }
   let hasInteractiveDescendant = false;
   for (const [liveElement2, virtualElement2] of pairs) {
-    if (filterDOM(liveElement2, virtualElement2, false, checks, onNonInteractive)) {
+    if (filterDOM(liveElement2, virtualElement2, false, checks, overrideChecks, onNonInteractive)) {
       hasInteractiveDescendant = true;
     }
   }
@@ -75,10 +90,10 @@ function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive
   if (!keep) removeVirtual(virtualElement);
   return keep;
 }
-function filterInteractive(dom, checks = {}, virtualDOM, onNonInteractive) {
+function filterInteractive(dom, checks = {}, overrideChecks = DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS, virtualDOM, onNonInteractive) {
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
   const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
-  filterDOM(liveRoot, virtualRoot, true, checks, onNonInteractive);
+  filterDOM(liveRoot, virtualRoot, true, checks, overrideChecks, onNonInteractive);
   return virtualRoot;
 }
 export {

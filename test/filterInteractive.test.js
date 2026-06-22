@@ -91,6 +91,7 @@ test("filterInteractive()", async () => {
                                 offScrolled: true,
                                 offViewport: false
                             },
+                            undefined,
                             null,
                             (element, reason) => console.debug(element, reason)
                         );

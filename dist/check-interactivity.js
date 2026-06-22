@@ -6,6 +6,25 @@ const CONTAINER_STYLE_POSITION_VALUES = ["relative", "absolute", "fixed", "stick
 const OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
 const MIN_OCCLUSION_SAMPLES = 6;
 const MAX_OCCLUSION_SAMPLES = 42;
+const DEFAULT_INTERACTIVITY_CHECKS = {
+  disconnected: true,
+  modalBlocked: true,
+  hidden: true,
+  inert: true,
+  disabled: true,
+  invisible: true,
+  unclickable: true,
+  collapsed: true,
+  clipped: true,
+  occluded: true,
+  // false
+  offScrolled: false,
+  // consider full document
+  offViewport: false,
+  // consider full document
+  ariaHidden: false
+  // might be exclusive to non-GUI navigation
+};
 function readProperty(element, property) {
   if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
   const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
@@ -57,23 +76,7 @@ function checkInteractivity(element, checks = {}) {
     };
   }
   checks = {
-    disconnected: true,
-    modalBlocked: true,
-    hidden: true,
-    inert: true,
-    disabled: true,
-    invisible: true,
-    unclickable: true,
-    collapsed: true,
-    clipped: true,
-    occluded: true,
-    // false
-    offScrolled: false,
-    // consider full document
-    offViewport: false,
-    // consider full document
-    ariaHidden: false,
-    // might be exclusive to non-GUI navigation
+    ...DEFAULT_INTERACTIVITY_CHECKS,
     ...checks ?? {}
   };
   if (checks.disconnected) {

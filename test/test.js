@@ -7,9 +7,37 @@ import puppeteer from "puppeteer";
 
 const ARGS = process.argv.slice(2);
 const HEADLESS = !ARGS.includes("--no-headless");
+const KEEPALIVE = ARGS.includes("--keepalive");
 const NO_HEADLESS_TIMEOUT = ARGS.includes("--timeout") ? parseInt(ARGS[ARGS.indexOf("--timeout") + 1]) : 2000;
 
+const activeBrowsers = new Set();
+ 
 let hasError = false;
+
+
+async function cleanupBrowsers() {
+    for(const browser of activeBrowsers) {
+        try {
+            await browser.close();
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    activeBrowsers.clear();
+}
+ 
+process.on("exit", cleanupBrowsers);
+process.on("SIGINT", async () => {
+    await cleanupBrowsers();
+
+    process.exit(2);
+});
+process.on("SIGTERM", async () => {
+    await cleanupBrowsers();
+
+    process.exit(2);
+});
 
 
 function wrapAssertion(cb) {
@@ -63,25 +91,37 @@ global.runBrowser = async function(url, inPageCallback, inPageCallbackArgs = [],
         headless: HEADLESS
     });
 
-    const page = (await browser.pages())[0];
+    activeBrowsers.add(browser);
 
-    await page.evaluateOnNewDocument(
-        (await readFile(join(import.meta.dirname, "../dist/api.browser.js"))).toString()
-    );
+    try {
+        const page = (await browser.pages())[0];
+        await page.evaluateOnNewDocument(
+            (await readFile(join(import.meta.dirname, "../dist/api.browser.js"))).toString()
+        );
 
-    return new Promise(async resolve => {
         await page.goto(url, {
             waitUntil: "load"
         });
 
         const result = await page.evaluate(inPageCallback, ...inPageCallbackArgs);
 
-        await new Promise(r => setTimeout(async () => {
+        !KEEPALIVE
+            && await new Promise(r => setTimeout(async () => {
+                await browser.close();
+                activeBrowsers.delete(browser);
+                r();
+            }, HEADLESS ? 0 : NO_HEADLESS_TIMEOUT));
+
+        return result;
+    } catch(err) {
+        try {
             await browser.close();
 
-            r();
-        }, optionsWithDefaults.headless ? 0 : NO_HEADLESS_TIMEOUT));
+            activeBrowsers.delete(browser);
+        } catch (err) {
+            console.error(err);
+        }
 
-        resolve(result);
-    });
+        throw err;
+    }
 }

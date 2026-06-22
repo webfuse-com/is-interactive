@@ -9,6 +9,16 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
     "ariaHidden",
     "invisible"
 ]);
+const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<InteractivityChecks>> = new Map(
+    Object.entries({
+        // Do not filter 'styled' inputs (commonly deliberately covered by click-through custom UI)
+        "input": {
+            invisible: false,
+            collapsed: false,
+            occluded: false,
+        }
+    })
+);
 
 
 function cloneWithShadow(node: Element): Element {
@@ -49,11 +59,14 @@ function filterDOM(
     virtualElement: Element,
     isRoot: boolean,
     checks: Partial<InteractivityChecks>,
+    overrideChecks: Map<string, Partial<InteractivityChecks>>,
     onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): boolean {
-    const result: InteractivityResult = checkInteractivity(liveElement, checks);
+    const applicableChecks: Partial<InteractivityChecks> = overrideChecks.get(liveElement.tagName.toLowerCase()) ?? checks;
 
-    if (onNonInteractive && !result.isInteractive) {
+    const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks);
+
+    if(onNonInteractive && !result.isInteractive) {
         onNonInteractive(liveElement, result.reason);
     }
 
@@ -62,7 +75,9 @@ function filterDOM(
         && result.reason
         && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)
     ) {
-        if(!isRoot) removeVirtual(virtualElement);
+        if(!isRoot) {
+            removeVirtual(virtualElement);
+        }
 
         return false;
     }
@@ -70,7 +85,9 @@ function filterDOM(
     if((liveElement instanceof HTMLSelectElement) && !liveElement.multiple && (liveElement.size <= 1)) {
         if(isRoot) return result.isInteractive;
 
-        if(!result.isInteractive) removeVirtual(virtualElement);
+        if(!result.isInteractive) {
+            removeVirtual(virtualElement);
+        }
 
         return result.isInteractive;
     }
@@ -105,7 +122,7 @@ function filterDOM(
     let hasInteractiveDescendant: boolean = false;
 
     for(const [ liveElement, virtualElement ] of pairs) {
-        if(filterDOM(liveElement, virtualElement, false, checks, onNonInteractive)) {
+        if(filterDOM(liveElement, virtualElement, false, checks, overrideChecks, onNonInteractive)) {
             hasInteractiveDescendant = true;
         }
     }
@@ -123,6 +140,7 @@ function filterDOM(
 export function filterInteractive(
     dom: Document | Element,
     checks: Partial<InteractivityChecks> = {},
+    overrideChecks: Map<string, Partial<InteractivityChecks>> = DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS,
     virtualDOM?: Document | Element,
     onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): Element {
@@ -134,7 +152,7 @@ export function filterInteractive(
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);
 
-    filterDOM(liveRoot, virtualRoot, true, checks, onNonInteractive);
+    filterDOM(liveRoot, virtualRoot, true, checks, overrideChecks, onNonInteractive);
 
     return virtualRoot;
 }

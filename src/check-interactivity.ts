@@ -10,6 +10,23 @@ const OPTION_TAG_NAMES: string[] = [ "OPTION", "OPTGROUP" ];
 const MIN_OCCLUSION_SAMPLES = 6;
 const MAX_OCCLUSION_SAMPLES: number = 42;
 
+const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
+    disconnected: true,
+    modalBlocked: true,
+    hidden: true,
+    inert: true,
+    disabled: true,
+    invisible: true,
+    unclickable: true,
+    collapsed: true,
+    clipped: true,
+    occluded: true,
+    // false
+    offScrolled: false, // consider full document
+    offViewport: false, // consider full document
+    ariaHidden: false,  // might be exclusive to non-GUI navigation
+};
+
 
 function readProperty<T>(element: Element, property: string): T | undefined {
     if(
@@ -92,21 +109,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     }
 
     checks = {
-        disconnected: true,
-        modalBlocked: true,
-        hidden: true,
-        inert: true,
-        disabled: true,
-        invisible: true,
-        unclickable: true,
-        collapsed: true,
-        clipped: true,
-        occluded: true,
-        // false
-        offScrolled: false, // consider full document
-        offViewport: false, // consider full document
-        ariaHidden: false,  // might be exclusive to non-GUI navigation
-
+        ...DEFAULT_INTERACTIVITY_CHECKS,
         ...(checks ?? {})
     };
 

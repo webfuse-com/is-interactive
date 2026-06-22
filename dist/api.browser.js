@@ -173,6 +173,25 @@
   var OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
   var MIN_OCCLUSION_SAMPLES = 6;
   var MAX_OCCLUSION_SAMPLES = 42;
+  var DEFAULT_INTERACTIVITY_CHECKS = {
+    disconnected: true,
+    modalBlocked: true,
+    hidden: true,
+    inert: true,
+    disabled: true,
+    invisible: true,
+    unclickable: true,
+    collapsed: true,
+    clipped: true,
+    occluded: true,
+    // false
+    offScrolled: false,
+    // consider full document
+    offViewport: false,
+    // consider full document
+    ariaHidden: false
+    // might be exclusive to non-GUI navigation
+  };
   function readProperty(element, property) {
     if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
     const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
@@ -224,23 +243,7 @@
       };
     }
     checks = {
-      disconnected: true,
-      modalBlocked: true,
-      hidden: true,
-      inert: true,
-      disabled: true,
-      invisible: true,
-      unclickable: true,
-      collapsed: true,
-      clipped: true,
-      occluded: true,
-      // false
-      offScrolled: false,
-      // consider full document
-      offViewport: false,
-      // consider full document
-      ariaHidden: false,
-      // might be exclusive to non-GUI navigation
+      ...DEFAULT_INTERACTIVITY_CHECKS,
       ...checks ?? {}
     };
     if (checks.disconnected) {
@@ -493,6 +496,16 @@
     "ariaHidden",
     "invisible"
   ]);
+  var DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
+    Object.entries({
+      // Do not filter 'styled' inputs (commonly deliberately covered by click-through custom UI)
+      "input": {
+        invisible: false,
+        collapsed: false,
+        occluded: false
+      }
+    })
+  );
   function cloneWithShadow(node) {
     const clone = node.cloneNode(false);
     const shadow = node.shadowRoot;
@@ -518,18 +531,23 @@
     const parent = virtual.parentElement ?? virtual.parentNode;
     parent?.removeChild(virtual);
   }
-  function filterDOM(liveElement, virtualElement, isRoot, checks, onNonInteractive) {
-    const result = checkInteractivity(liveElement, checks);
+  function filterDOM(liveElement, virtualElement, isRoot, checks, overrideChecks, onNonInteractive) {
+    const applicableChecks = overrideChecks?.get(liveElement.tagName.toLowerCase()) ?? checks;
+    const result = checkInteractivity(liveElement, applicableChecks);
     if (onNonInteractive && !result.isInteractive) {
       onNonInteractive(liveElement, result.reason);
     }
     if (!result.isInteractive && result.reason && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)) {
-      if (!isRoot) removeVirtual(virtualElement);
+      if (!isRoot) {
+        removeVirtual(virtualElement);
+      }
       return false;
     }
     if (liveElement instanceof HTMLSelectElement && !liveElement.multiple && liveElement.size <= 1) {
       if (isRoot) return result.isInteractive;
-      if (!result.isInteractive) removeVirtual(virtualElement);
+      if (!result.isInteractive) {
+        removeVirtual(virtualElement);
+      }
       return result.isInteractive;
     }
     const pairs = [];
@@ -553,7 +571,7 @@
     }
     let hasInteractiveDescendant = false;
     for (const [liveElement2, virtualElement2] of pairs) {
-      if (filterDOM(liveElement2, virtualElement2, false, checks, onNonInteractive)) {
+      if (filterDOM(liveElement2, virtualElement2, false, checks, overrideChecks, onNonInteractive)) {
         hasInteractiveDescendant = true;
       }
     }
@@ -562,10 +580,10 @@
     if (!keep) removeVirtual(virtualElement);
     return keep;
   }
-  function filterInteractive(dom, checks = {}, virtualDOM, onNonInteractive) {
+  function filterInteractive(dom, checks = {}, overrideChecks = DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS, virtualDOM, onNonInteractive) {
     const liveRoot = dom instanceof Document ? dom.documentElement : dom;
     const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
-    filterDOM(liveRoot, virtualRoot, true, checks, onNonInteractive);
+    filterDOM(liveRoot, virtualRoot, true, checks, overrideChecks, onNonInteractive);
     return virtualRoot;
   }
 
