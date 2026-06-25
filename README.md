@@ -79,10 +79,18 @@ function checkInteractivity(element: Element, checks?: InteractivityChecks): {
 function filterInteractive(dom: Document | Element, checks?: InteractivityChecks): Element
 ```
 
-### DEMO
+### Interactive Demo (pun intended)
 
 Open [demo/demo.html](./demo/demo.html) in a browser.
 
 <a href="./demo/demo.html">
   <img width="830" src="./.github/demo-screenshot.png">
 </a>
+
+### Meaning of _Interactive_
+
+> Actionable ⊂ **Interactive** ⊂ All Elements
+
+From within a web application, an element is considered interactive when it is surfaced by the UI. That means a user can perceive it and potentially act on it. Elements that are not surfaced are therefore not interactive, for instance, an input declared as hidden.
+
+Whether an interactive element is truly actionable, however, depends on the presence of an actuation listener. Actuation listeners, including browser-native effect, such as those associated with links or checkboxes.
