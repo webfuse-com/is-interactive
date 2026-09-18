@@ -76,8 +76,30 @@ function checkInteractivity(element: Element, checks?: InteractivityChecks): {
  * Filter a DOM (sub)tree for interactive elements.
  * Create a 'surface'-only DOM.
  */
-function filterInteractive(dom: Document | Element, checks?: InteractivityChecks): Element
+function filterInteractive(
+  dom: Document | Element,
+  checks?: InteractivityChecks,
+  elementOverrideChecks:
+      { [ key: string ]: Partial<InteractivityChecks> }
+    | Map<string, Partial<InteractivityChecks>>
+): Element  // virtual DOM
 ```
+
+> By default, `filterInteractive` sets `elementOverrideChecks` to:
+> 
+> ``` js
+> {
+>   "input": {
+>     clipped: false,
+>     collapsed: false,
+>     hidden: false,
+>     invisible: false,
+>     occluded: false,
+>   }
+> }
+> ```
+>
+> This accounts for custom-style input patterns (e.g., occluded by click-receiver element).
 
 ### Interactive Demo (pun intended)
 
