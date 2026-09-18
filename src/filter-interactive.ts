@@ -11,15 +11,60 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
 ]);
 const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<InteractivityChecks>> = new Map(
     Object.entries({
-        // Do not filter 'styled' inputs (commonly deliberately covered by click-through custom UI)
+        // Do not filter 'styled' inputs (commonly deliberately hidden or occluded by click-through custom UI)
         "input": {
-            invisible: false,
+            clipped: false,
             collapsed: false,
+            hidden: false,
+            invisible: false,
             occluded: false,
         }
     })
 );
 
+
+function pickCascading(overrides: Partial<InteractivityChecks>): Partial<InteractivityChecks> {
+    return Object.fromEntries(
+        Object.entries(overrides)
+            .filter((entry: [ string, unknown ]) => CASCADING_NON_INTERACTIVITY_CHECKS.has(entry[0] as keyof InteractivityChecks))
+    );
+}
+
+function collectRescueSelectors(
+    elementOverrideChecks: Map<string, Partial<InteractivityChecks>>
+): Map<string, string> {
+    const tagNamesByReason: Map<string, string[]> = new Map();
+
+    for(const [ tagName, overrides ] of elementOverrideChecks) {
+        for(const [ check, isEnabled ] of Object.entries(pickCascading(overrides))) {
+            if(isEnabled !== false) continue;
+
+            const tagNames: string[] = tagNamesByReason.get(check) ?? [];
+
+            tagNames.push(tagName);
+            tagNamesByReason.set(check, tagNames);
+        }
+    }
+
+    return new Map(
+        [ ...tagNamesByReason ]
+            .map((entry: [ string, string[] ]) => [ entry[0], entry[1].join(",") ] as [ string, string ])
+    );
+}
+
+function containsDeep(root: Element | ShadowRoot, selector: string): boolean {
+    if(root.querySelector(selector)) return true;
+
+    const shadow: ShadowRoot | null = (root instanceof Element) ? root.shadowRoot : null;
+
+    if(shadow && containsDeep(shadow, selector)) return true;
+
+    for(const descendant of root.querySelectorAll("*")) {
+        if(descendant.shadowRoot && containsDeep(descendant.shadowRoot, selector)) return true;
+    }
+
+    return false;
+}
 
 function cloneWithShadow(node: Element): Element {
     const clone: Element = node.cloneNode(false) as Element;
@@ -59,10 +104,23 @@ function filterDOM(
     virtualElement: Element,
     isRoot: boolean,
     checks: Partial<InteractivityChecks>,
-    overrideChecks: Map<string, Partial<InteractivityChecks>>,
+    inheritedChecks: Partial<InteractivityChecks>,
+    elementOverrideChecks: Map<string, Partial<InteractivityChecks>>,
+    rescueSelectors: Map<string, string>,
     onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): boolean {
-    const applicableChecks: Partial<InteractivityChecks> = overrideChecks.get(liveElement.tagName.toLowerCase()) ?? checks;
+    const overrides: Partial<InteractivityChecks> = elementOverrideChecks.get(liveElement.tagName.toLowerCase()) ?? {};
+
+    const applicableChecks: Partial<InteractivityChecks> = {
+        ...checks,
+        ...inheritedChecks,
+        ...overrides
+    };
+
+    // Cascading overrides propagate; deeper explicit statements win
+    const descendantChecks: Partial<InteractivityChecks> = Object.keys(overrides).length
+        ? { ...inheritedChecks, ...pickCascading(overrides) }
+        : inheritedChecks;
 
     const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks);
 
@@ -75,11 +133,16 @@ function filterDOM(
         && result.reason
         && CASCADING_NON_INTERACTIVITY_CHECKS.has(result.reason)
     ) {
-        if(!isRoot) {
-            removeVirtual(virtualElement);
-        }
+        const rescueSelector: string | undefined = rescueSelectors.get(result.reason);
 
-        return false;
+        // Only cascade if no descendant tag overrides this very check
+        if(!rescueSelector || !containsDeep(liveElement, rescueSelector)) {
+            if(!isRoot) {
+                removeVirtual(virtualElement);
+            }
+
+            return false;
+        }
     }
 
     if((liveElement instanceof HTMLSelectElement) && !liveElement.multiple && (liveElement.size <= 1)) {
@@ -122,7 +185,7 @@ function filterDOM(
     let hasInteractiveDescendant: boolean = false;
 
     for(const [ liveElement, virtualElement ] of pairs) {
-        if(filterDOM(liveElement, virtualElement, false, checks, overrideChecks, onNonInteractive)) {
+        if(filterDOM(liveElement, virtualElement, false, checks, descendantChecks, elementOverrideChecks, rescueSelectors, onNonInteractive)) {
             hasInteractiveDescendant = true;
         }
     }
@@ -140,10 +203,17 @@ function filterDOM(
 export function filterInteractive(
     dom: Document | Element,
     checks: Partial<InteractivityChecks> = {},
-    overrideChecks: Map<string, Partial<InteractivityChecks>> = DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS,
+    elementOverrideChecks: { [ key: string ]: Partial<InteractivityChecks>; } | Map<string, Partial<InteractivityChecks>> = DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS,
     virtualDOM?: Document | Element,
     onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): Element {
+    elementOverrideChecks = new Map(
+        Object.entries(elementOverrideChecks)
+            .map((entry: [ string, Partial<InteractivityChecks> ]) => [ entry[0].toLowerCase(), entry[1] ])
+    ); // coerce to Map
+
+    const rescueSelectors: Map<string, string> = collectRescueSelectors(elementOverrideChecks);
+
     const liveRoot: Element = (dom instanceof Document)
         ? dom.documentElement
         : dom;
@@ -152,7 +222,7 @@ export function filterInteractive(
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);
 
-    filterDOM(liveRoot, virtualRoot, true, checks, overrideChecks, onNonInteractive);
+    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, onNonInteractive);
 
     return virtualRoot;
 }
