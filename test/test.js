@@ -40,24 +40,29 @@ process.on("SIGTERM", async () => {
 });
 
 
-function wrapAssertion(cb) {
+function wrapAssertion(cb, entry) {
     try {
         cb();
     } catch(err) {
         if(err.code !== "ERR_ASSERTION") {
             console.error(err);
 
-            process.exit(2);
+            process.exitCode = 2;
+
+            return;
         }
+
+        Error.captureStackTrace(err, entry);
 
         hasError = true;
 
         console.error(`\x1b[31mAssertion Error${err.message ? ` '${err.message}'` : ""}\x1b[0m`);
+        console.error(`\x1b[2m${err.stack.split("\n").slice(1).join("\n")}\x1b[0m`);
     }
 }
 
-global.assertEqual = function(a, b, message) {
-    wrapAssertion(() => deepEqual(a, b, message));
+global.assertEqual = function assertEqual(a, b, message) {
+    wrapAssertion(() => deepEqual(a, b, message), assertEqual);
 }
 
 global.test = async function(title, cb) {
@@ -69,9 +74,15 @@ global.test = async function(title, cb) {
             : console.log(`\x1b[32mTests succeeded.\x1b[0m`);
     });
 
-    await cb();
+    try {
+        await cb();
+    } catch(err) {
+        console.error(err);
 
-    hasError && process.exit(1);
+        hasError = true;
+    }
+
+    hasError && (process.exitCode = 1);
 }
 
 global.runBrowser = async function(url, inPageCallback, inPageCallbackArgs = [], options = {}) {
@@ -95,6 +106,9 @@ global.runBrowser = async function(url, inPageCallback, inPageCallbackArgs = [],
 
     try {
         const page = (await browser.pages())[0];
+
+        page.on("pageerror", err => console.error(err));
+
         await page.evaluateOnNewDocument(
             (await readFile(join(import.meta.dirname, "../dist/api.browser.js"))).toString()
         );

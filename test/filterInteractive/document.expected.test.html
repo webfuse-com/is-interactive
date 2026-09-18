@@ -5,19 +5,20 @@
         </header>
         <main>
             <h1>Test</h1>
+            <section>
+                <span role="button" aria-hidden="true">
+                    <div>
+                        <strong>Do not click here</strong>
+                    </div>
+                </span>
+            </section>
             <section h="clipped">
                 <div style="width: 200px; height: 50px; overflow: hidden;"></div>
             </section>
-            <section h="collapsed" class="reserve-space"></section>
+            <section h="collapsed" class="reserve-space">
+                <div></div>
+            </section>
             <section h="disabled">
-                <disabled-wrapper>
-                    <template shadowrootmode="open" shadowrootserializable="">
-                        <strong>
-                            Shadow
-                        </strong>
-                        <div></div>
-                    </template>
-                </disabled-wrapper>
                 <div></div>
             </section>
             <section h="disconnected">
@@ -25,8 +26,13 @@
             </section>
             <section h="hidden" class="reserve-space">
                 <div></div>
+                <div>
+                    <!-- excemption -->
+                    <input type="text" hidden="">
+                </div>
             </section>
-            <section h="inert"></section>
+            <section h="inert">
+            </section>
             <section h="invisible">
                 <div></div>
                 <div></div>
@@ -42,9 +48,7 @@
                 </div>
                 <!-- partially -->
                 <div>
-                    <button style="position: absolute; top: 100px; left: 100px; width: 50px; height: 25px;">
-                        Click here
-                    </button>
+                    <button style="position: absolute; top: 100px; left: 100px; width: 50px; height: 25px;">Click here</button>
                     <div style="position: absolute; top: 90px; left: 90px; width: 35px; height: 100px; background-color: aqua;"></div>
                 </div>
             </section>
@@ -52,9 +56,7 @@
                 <div></div>
                 <!-- recovered -->
                 <div style="pointer-events: none;">
-                    <button style="pointer-events: auto;">
-                        Click here
-                    </button>
+                    <button style="pointer-events: auto;">Click here</button>
                 </div>
             </section>
             <section h="modalBlocked">
@@ -68,9 +70,7 @@
             </section>
         </main>
         <footer>
-            <span>
-                2026
-            </span>
+            <span>2026</span>
         </footer>
     </body>
 </html>

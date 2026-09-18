@@ -7,7 +7,7 @@
             .reserve-space {
                 position: relative;
                 width: 200px;
-                height: 150px;
+                height: 200px;
             }
         </STYLE>
     </head>
@@ -23,6 +23,18 @@
         </header>
         <main>
             <h1>Test</h1>
+            <section>
+                <div role="toolbar" aria-hidden="true">
+                    <div>
+                        <button>Click here</button>
+                    </div>
+                </div>
+                <span role="button" aria-hidden="true">
+                    <div>
+                        <strong>Do not click here</strong>
+                    </div>
+                </span>
+            </section>
             <section H="clipped">
                 <div style="width: 200px; height: 50px; overflow: hidden;">
                     <button style="margin-left: 300px;">Click here</button>
@@ -36,14 +48,6 @@
                 </div>
             </section>
             <section H="disabled">
-                <disabled-wrapper>
-                    <template shadowrootmode="open">
-                        <strong>Shadow</strong>
-                        <div>
-                            <button disabled>Click here</button>
-                        </div>
-                    </template>
-                </disabled-wrapper>
                 <fieldset disabled>
                     <button>Click here</button>
                 </fieldset>
@@ -62,6 +66,10 @@
             <section H="hidden" class="reserve-space">
                 <div>
                     <button hidden>Click here</button>
+                </div>
+                <div>
+                    <!-- excemption -->
+                    <input type="text" hidden>
                 </div>
             </section>
             <section H="inert">

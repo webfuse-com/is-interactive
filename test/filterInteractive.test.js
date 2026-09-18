@@ -1,8 +1,5 @@
 import { readFile, writeFile } from "fs/promises";
 import { join } from "path";
-import { deepEqual } from "assert";
-
-import puppeteer from "puppeteer";
 
 import "./test.js";
 
@@ -14,6 +11,9 @@ const TESTS = [
     },
     {
         name: "subtree"
+    },
+    {
+        name: "shadow-dom"
     }
 ];
 
@@ -33,7 +33,6 @@ function formatHTML(html) {
 
         if(!token) continue;
 
-        const isComment = /^<!--/.test(token);
         const isClosingTag = /^<\//.test(token);
         const isOpeningTag =
             /^<[^!/][^>]*>$/.test(token) &&
@@ -91,7 +90,19 @@ test("filterInteractive()", async () => {
                                 offScrolled: true,
                                 offViewport: false
                             },
-                            undefined,
+                            {   // per-element overrides
+                                "input": {
+                                    clipped: false,   // as default
+                                    collapsed: false,   // as default
+                                    hidden: false,      // as default
+                                    invisible: false,   // as default
+                                    occluded: false,    // as default
+                                    offScrolled: false,
+                                },
+                                "span": {
+                                    ariaHidden: false
+                                }
+                            },
                             null,
                             (element, reason) => console.debug(element, reason)
                         );
