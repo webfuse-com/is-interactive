@@ -17,6 +17,12 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<Interact
             collapsed: false,
             invisible: false,
             occluded: false,
+        },
+        "select": {
+            clipped: false,
+            collapsed: false,
+            invisible: false,
+            occluded: false,
         }
     })
 );

@@ -97,6 +97,12 @@ function filterInteractive(
 >     collapsed: false,
 >     invisible: false,
 >     occluded: false,
+>   },
+>   "select": {
+>     clipped: false,
+>     collapsed: false,
+>     invisible: false,
+>     occluded: false,
 >   }
 > }
 > ```

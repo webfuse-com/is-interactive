@@ -94,7 +94,13 @@ test("filterInteractive()", async () => {
                                 "input": {
                                     clipped: false,   // as default
                                     collapsed: false,   // as default
-                                    hidden: false,      // as default
+                                    invisible: false,   // as default
+                                    occluded: false,    // as default
+                                    offScrolled: false,
+                                },
+                                "select": {
+                                    clipped: false,   // as default
+                                    collapsed: false,   // as default
                                     invisible: false,   // as default
                                     occluded: false,    // as default
                                     offScrolled: false,

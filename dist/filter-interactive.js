@@ -14,6 +14,12 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
       collapsed: false,
       invisible: false,
       occluded: false
+    },
+    "select": {
+      clipped: false,
+      collapsed: false,
+      invisible: false,
+      occluded: false
     }
   })
 );
