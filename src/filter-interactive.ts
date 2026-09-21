@@ -15,7 +15,6 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<Interact
         "input": {
             clipped: false,
             collapsed: false,
-            hidden: false,
             invisible: false,
             occluded: false,
         }

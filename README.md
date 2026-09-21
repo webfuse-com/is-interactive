@@ -53,7 +53,10 @@ interface InteractivityChecks {
 /**
  * Check whether an element is interactive.
  */
-function checkInteractivity(element: Element, checks?: InteractivityChecks): {
+function checkInteractivity(
+  element: Element,
+  checks?: InteractivityChecks
+): {
   isInteractive: boolean;
   reason?:
     | "notElement"
@@ -87,12 +90,11 @@ function filterInteractive(
 
 > By default, `filterInteractive` sets `elementOverrideChecks` to:
 > 
-> ``` js
+> ``` ts
 > {
 >   "input": {
 >     clipped: false,
 >     collapsed: false,
->     hidden: false,
 >     invisible: false,
 >     occluded: false,
 >   }

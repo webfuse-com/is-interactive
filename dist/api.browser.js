@@ -502,7 +502,6 @@
       "input": {
         clipped: false,
         collapsed: false,
-        hidden: false,
         invisible: false,
         occluded: false
       }

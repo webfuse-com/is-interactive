@@ -13,10 +13,19 @@
                 </span>
             </section>
             <section h="clipped">
-                <div style="width: 200px; height: 50px; overflow: hidden;"></div>
+                <div style="width: 200px; height: 50px; overflow: hidden;">
+                    <div>
+                        <!-- excemption -->
+                        <input type="text" style="margin-left: 300px;">
+                    </div>
+                </div>
             </section>
             <section h="collapsed" class="reserve-space">
                 <div></div>
+                <div>
+                    <!-- excemption -->
+                    <input type="text" style="position: absolute; margin: 0; padding: 0; width: 0; border: none; outline: none;">
+                </div>
             </section>
             <section h="disabled">
                 <div></div>
@@ -26,10 +35,7 @@
             </section>
             <section h="hidden" class="reserve-space">
                 <div></div>
-                <div>
-                    <!-- excemption -->
-                    <input type="text" hidden="">
-                </div>
+                <div></div>
             </section>
             <section h="inert">
             </section>
@@ -45,6 +51,8 @@
                 <!-- fully -->
                 <div>
                     <div style="position: absolute; top: 90px; left: 90px; width: 100px; height: 100px; background-color: lime;"></div>
+                    <!-- excemption -->
+                    <input type="text" style="position: absolute; top: 90px; left: 90px; width: 10px; height: 10px; z-index: -1;">
                 </div>
                 <!-- partially -->
                 <div>

@@ -12,7 +12,6 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
     "input": {
       clipped: false,
       collapsed: false,
-      hidden: false,
       invisible: false,
       occluded: false
     }
