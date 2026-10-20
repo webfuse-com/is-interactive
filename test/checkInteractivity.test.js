@@ -113,6 +113,11 @@ const TESTS = [
         expected: false
     },
     {
+        name: "invisible.slot",
+        check: "invisible",
+        expected: false
+    },
+    {
         name: "modalBlocked.true.1",
         check: "modalBlocked",
         expected: true

@@ -40,6 +40,14 @@ function getParentElement(element) {
   }
   return null;
 }
+function getComposedParentElement(element) {
+  const assignedSlot = readProperty(element, "assignedSlot");
+  if (assignedSlot) return assignedSlot;
+  return getParentElement(element);
+}
+function hidesSubtree(style) {
+  return style.display === "none" || parseFloat(style.opacity) === 0 || style.contentVisibility === "hidden";
+}
 function closestComposed(element, predicate) {
   let currentElement = element;
   while (currentElement) {
@@ -162,14 +170,13 @@ function checkInteractivity(element, checks = {}) {
       }
       let currentElement = element;
       while (currentElement) {
-        const style2 = getComputedStyle(currentElement);
-        if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
+        if (hidesSubtree(getComputedStyle(currentElement))) {
           return {
             isInteractive: false,
             reason: "invisible"
           };
         }
-        currentElement = getParentElement(currentElement);
+        currentElement = getComposedParentElement(currentElement);
       }
     }
   }
