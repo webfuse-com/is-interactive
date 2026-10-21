@@ -4,7 +4,7 @@ const CASCADING_NON_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
   "hidden",
   "inert",
   "ariaHidden",
-  "invisible"
+  "unrendered"
 ]);
 const POST_CASCADING_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
   "collapsed",
@@ -20,13 +20,15 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
       clipped: false,
       collapsed: false,
       invisible: false,
-      occluded: false
+      occluded: false,
+      unrendered: false
     },
     "select": {
       clipped: false,
       collapsed: false,
       invisible: false,
-      occluded: false
+      occluded: false,
+      unrendered: false
     }
   })
 );
@@ -100,7 +102,9 @@ function filterDOM(liveElement, virtualElement, isRoot, checks, inheritedChecks,
   const descendantChecks = Object.keys(overrides).length ? { ...inheritedChecks, ...pickCascading(overrides) } : inheritedChecks;
   const enabledCascadingChecks = pickEnabledCascading(applicableChecks);
   const skipParentChecks = !liveElement.assignedSlot && enabledCascadingChecks.every((check) => parentVerifiedChecks.has(check));
-  const result = checkInteractivity(liveElement, applicableChecks, { skipParentChecks });
+  const result = checkInteractivity(liveElement, applicableChecks, {
+    skipParentChecks
+  });
   const verifiedChecks = result.isInteractive || !!result.reason && POST_CASCADING_INTERACTIVITY_CHECKS.has(result.reason) ? new Set(enabledCascadingChecks) : /* @__PURE__ */ new Set();
   if (onNonInteractive && !result.isInteractive) {
     onNonInteractive(liveElement, result.reason);

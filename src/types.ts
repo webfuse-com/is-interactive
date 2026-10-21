@@ -7,6 +7,7 @@ export interface InteractivityChecks {
     ariaHidden: boolean;
     invisible: boolean;
     unclickable: boolean;
+    unrendered: boolean;
     collapsed: boolean;
     clipped: boolean;
     offScrolled: boolean;

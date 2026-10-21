@@ -35,25 +35,27 @@ const surfaceDOMSnapshot = selector => {
 ``` ts
 // Toggle checks to perform (default: all enabled, except 'offViewport')
 interface InteractivityChecks {
-  clipped: boolean;          // true
-  collapsed: boolean;        // true
-  disabled: boolean;         // true
-  disconnected: boolean;     // true
-  hidden: boolean;           // true
-  inert: boolean;            // true
-  invisible: boolean;        // true
-  modalBlocked: boolean;     // true
-  occluded: boolean;         // true
-  unclickable: boolean;      // true
-  ariaHidden: boolean;       // false
-  offScrolled: boolean;      // false
-  offViewport: boolean;      // false
+  clipped: boolean;       // true
+  collapsed: boolean;     // true
+  disabled: boolean;      // true
+  disconnected: boolean;  // true
+  hidden: boolean;        // true
+  inert: boolean;         // true
+  invisible: boolean;     // true
+  modalBlocked: boolean;  // true
+  occluded: boolean;      // true
+  unclickable: boolean;   // true
+  unrendered: boolean;    // true
+  ariaHidden: boolean;    // false
+  offScrolled: boolean;   // false
+  offViewport: boolean;   // false
 }
 
+// Additional options (default: all disabled)
 interface InteractivityOptions {
-  // Skip checks inherited from parents ('hidden', 'inert', 'ariaHidden', 'invisible'),
+  // Skip checks inherited from parents ('hidden', 'inert', 'ariaHidden', 'unrendered'),
   // e.g., when parents are known to be checked already
-  skipParentChecks: boolean; // false
+  skipParentChecks: boolean;  // false
 }
 
 /**
@@ -77,6 +79,7 @@ function checkInteractivity(
     | "modalBlocked"
     | "occluded"
     | "unclickable"
+    | "unrendered"
     | "ariaHidden"
     | "offScrolled"
     | "offViewport"
@@ -104,12 +107,14 @@ function filterInteractive(
 >     collapsed: false,
 >     invisible: false,
 >     occluded: false,
+>     unrendered: false,
 >   },
 >   "select": {
 >     clipped: false,
 >     collapsed: false,
 >     invisible: false,
 >     occluded: false,
+>     unrendered: false,
 >   }
 > }
 > ```

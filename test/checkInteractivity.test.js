@@ -167,38 +167,17 @@ const TESTS = [
         ]
     },
     {
-        name: "invisible.display",
-        check: "invisible",
-        expected: false
-    },
-    {
-        name: "invisible.opacity",
-        check: "invisible",
-        expected: false
-    },
-    {
         name: "invisible.visibility",
         check: "invisible",
         expected: false
     },
     {
-        name: "invisible.slot",
+        name: "invisible.restore.true",
         check: "invisible",
-        expected: false
+        expected: true
     },
     {
-        name: "invisible.parent",
-        check: "invisible",
-        expected: false,
-        variants: [
-            {
-                options: { skipParentChecks: true },
-                expected: true
-            }
-        ]
-    },
-    {
-        name: "invisible.self",
+        name: "invisible.restore.false",
         check: "invisible",
         expected: false,
         variants: [
@@ -277,6 +256,43 @@ const TESTS = [
         name: "unclickable.restore.false",
         check: "unclickable",
         expected: false
+    },
+    {
+        name: "unrendered.display",
+        check: "unrendered",
+        expected: false
+    },
+    {
+        name: "unrendered.opacity",
+        check: "unrendered",
+        expected: false
+    },
+    {
+        name: "unrendered.slot",
+        check: "unrendered",
+        expected: false
+    },
+    {
+        name: "unrendered.parent",
+        check: "unrendered",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
+    },
+    {
+        name: "unrendered.self",
+        check: "unrendered",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: false
+            }
+        ]
     }
 ];
 
@@ -319,6 +335,7 @@ test("checkInteractivity()", async () => {
                                             modalBlocked: false,
                                             occluded: false,
                                             unclickable: false,
+                                            unrendered: false,
                                             ariaHidden: false,
                                             offScrolled: false,
                                             offViewport: false,

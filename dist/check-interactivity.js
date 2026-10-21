@@ -14,6 +14,7 @@ const DEFAULT_INTERACTIVITY_CHECKS = {
   disabled: true,
   invisible: true,
   unclickable: true,
+  unrendered: true,
   collapsed: true,
   clipped: true,
   occluded: true,
@@ -154,7 +155,7 @@ function checkInteractivity(element, checks = {}, options = {}) {
     }
   }
   const style = getComputedStyle(element);
-  if (checks.invisible || checks.unclickable) {
+  if (checks.invisible || checks.unclickable || checks.unrendered) {
     if (checks.unclickable) {
       if (style.pointerEvents === "none") {
         return {
@@ -170,13 +171,15 @@ function checkInteractivity(element, checks = {}, options = {}) {
           reason: "invisible"
         };
       }
+    }
+    if (checks.unrendered) {
       let currentElement = element;
       while (currentElement) {
         const style2 = getComputedStyle(currentElement);
         if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
           return {
             isInteractive: false,
-            reason: "invisible"
+            reason: "unrendered"
           };
         }
         currentElement = options.skipParentChecks ? null : getParentElement(currentElement);

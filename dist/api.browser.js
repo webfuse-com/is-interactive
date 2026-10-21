@@ -181,6 +181,7 @@
     disabled: true,
     invisible: true,
     unclickable: true,
+    unrendered: true,
     collapsed: true,
     clipped: true,
     occluded: true,
@@ -321,7 +322,7 @@
       }
     }
     const style = getComputedStyle(element);
-    if (checks.invisible || checks.unclickable) {
+    if (checks.invisible || checks.unclickable || checks.unrendered) {
       if (checks.unclickable) {
         if (style.pointerEvents === "none") {
           return {
@@ -337,13 +338,15 @@
             reason: "invisible"
           };
         }
+      }
+      if (checks.unrendered) {
         let currentElement = element;
         while (currentElement) {
           const style2 = getComputedStyle(currentElement);
           if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
             return {
               isInteractive: false,
-              reason: "invisible"
+              reason: "unrendered"
             };
           }
           currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
@@ -504,7 +507,7 @@
     "hidden",
     "inert",
     "ariaHidden",
-    "invisible"
+    "unrendered"
   ]);
   var POST_CASCADING_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
     "collapsed",
@@ -520,13 +523,15 @@
         clipped: false,
         collapsed: false,
         invisible: false,
-        occluded: false
+        occluded: false,
+        unrendered: false
       },
       "select": {
         clipped: false,
         collapsed: false,
         invisible: false,
-        occluded: false
+        occluded: false,
+        unrendered: false
       }
     })
   );
@@ -600,7 +605,9 @@
     const descendantChecks = Object.keys(overrides).length ? { ...inheritedChecks, ...pickCascading(overrides) } : inheritedChecks;
     const enabledCascadingChecks = pickEnabledCascading(applicableChecks);
     const skipParentChecks = !liveElement.assignedSlot && enabledCascadingChecks.every((check) => parentVerifiedChecks.has(check));
-    const result = checkInteractivity(liveElement, applicableChecks, { skipParentChecks });
+    const result = checkInteractivity(liveElement, applicableChecks, {
+      skipParentChecks
+    });
     const verifiedChecks = result.isInteractive || !!result.reason && POST_CASCADING_INTERACTIVITY_CHECKS.has(result.reason) ? new Set(enabledCascadingChecks) : /* @__PURE__ */ new Set();
     if (onNonInteractive && !result.isInteractive) {
       onNonInteractive(liveElement, result.reason);

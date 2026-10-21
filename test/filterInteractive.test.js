@@ -31,13 +31,16 @@ const TESTS = [
         name: "skip-parent.unclickable"
     },
     {
+        name: "visibility"
+    },
+    {
         name: "skip-parent.override",
         elementOverrideChecks: {
             "div": {
-                invisible: false
+                unrendered: false
             },
             "button": {
-                invisible: true
+                unrendered: true
             }
         }
     }
@@ -122,6 +125,7 @@ test("filterInteractive()", async () => {
                                     collapsed: false,   // as default
                                     invisible: false,   // as default
                                     occluded: false,    // as default
+                                    unrendered: false,  // as default
                                     offScrolled: false,
                                 },
                                 "select": {
@@ -129,6 +133,7 @@ test("filterInteractive()", async () => {
                                     collapsed: false,   // as default
                                     invisible: false,   // as default
                                     occluded: false,    // as default
+                                    unrendered: false,  // as default
                                     offScrolled: false,
                                 },
                                 "span": {

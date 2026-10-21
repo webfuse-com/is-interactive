@@ -7,7 +7,7 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
     "hidden",
     "inert",
     "ariaHidden",
-    "invisible"
+    "unrendered"
 ]);
 // Checks evaluated after all cascading checks (order in checkInteractivity)
 const POST_CASCADING_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks | "notElement"> = new Set([
@@ -25,12 +25,14 @@ const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<Interact
             collapsed: false,
             invisible: false,
             occluded: false,
+            unrendered: false,
         },
         "select": {
             clipped: false,
             collapsed: false,
             invisible: false,
             occluded: false,
+            unrendered: false,
         }
     })
 );

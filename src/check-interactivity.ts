@@ -18,6 +18,7 @@ export const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
     disabled: true,
     invisible: true,
     unclickable: true,
+    unrendered: true,
     collapsed: true,
     clipped: true,
     occluded: true,
@@ -214,7 +215,7 @@ export function checkInteractivity(
 
     const style: CSSStyleDeclaration = getComputedStyle(element);
 
-    if(checks.invisible || checks.unclickable) {
+    if(checks.invisible || checks.unclickable || checks.unrendered) {
         if(checks.unclickable) {
             if(style.pointerEvents === "none") {
                 return {
@@ -231,7 +232,9 @@ export function checkInteractivity(
                     reason: "invisible"
                 };
             }
+        }
 
+        if(checks.unrendered) {
             let currentElement: Element | null = element;
 
             while(currentElement) {
@@ -244,7 +247,7 @@ export function checkInteractivity(
                 ) {
                     return {
                         isInteractive: false,
-                        reason: "invisible"
+                        reason: "unrendered"
                     };
                 }
 
