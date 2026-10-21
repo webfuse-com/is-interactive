@@ -44,6 +44,11 @@ function readProperty<T>(element: Element, property: string): T | undefined {
 function getParentElement(element: Element | null): Element | null {
     if(!element) return null;
 
+    // Slotted elements render within their slot (flat tree)
+    const slot = readProperty<HTMLSlotElement | null>(element, "assignedSlot");
+
+    if(slot) return slot;
+
     const parent = readProperty<Element | null>(element, "parentElement");
 
     if(parent) return parent;
@@ -55,28 +60,6 @@ function getParentElement(element: Element | null): Element | null {
     }
 
     return null;
-}
-
-/**
- * Parent of an element in the flat tree, which rendering follows: the slot the element is assigned to,
- * the host of its shadow root, or its parent element.
- */
-function getComposedParentElement(element: Element): Element | null {
-    const assignedSlot = readProperty<HTMLSlotElement | null>(element, "assignedSlot");
-
-    if(assignedSlot) return assignedSlot;
-
-    return getParentElement(element);
-}
-
-/**
- * Whether a computed style hides the whole subtree of its element, whatever the descendants declare.
- * Unlike 'visibility', which a descendant can override.
- */
-function hidesSubtree(style: CSSStyleDeclaration): boolean {
-    return (style.display === "none")
-        || (parseFloat(style.opacity) === 0)
-        || (style.contentVisibility === "hidden");
 }
 
 function closestComposed(element: Element, predicate: (element: Element) => boolean): Element | null {
@@ -241,14 +224,20 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
             let currentElement: Element | null = element;
 
             while(currentElement) {
-                if(hidesSubtree(getComputedStyle(currentElement))) {
+                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+
+                if(
+                    (style.display === "none")
+                    || (parseFloat(style.opacity) === 0)
+                    || (style.contentVisibility === "hidden")
+                ) {
                     return {
                         isInteractive: false,
                         reason: "invisible"
                     };
                 }
 
-                currentElement = getComposedParentElement(currentElement);
+                currentElement = getParentElement(currentElement);
             }
         }
     }

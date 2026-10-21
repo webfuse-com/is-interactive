@@ -32,6 +32,8 @@ function readProperty(element, property) {
 }
 function getParentElement(element) {
   if (!element) return null;
+  const slot = readProperty(element, "assignedSlot");
+  if (slot) return slot;
   const parent = readProperty(element, "parentElement");
   if (parent) return parent;
   const root = element.getRootNode();
@@ -39,14 +41,6 @@ function getParentElement(element) {
     return root.host;
   }
   return null;
-}
-function getComposedParentElement(element) {
-  const assignedSlot = readProperty(element, "assignedSlot");
-  if (assignedSlot) return assignedSlot;
-  return getParentElement(element);
-}
-function hidesSubtree(style) {
-  return style.display === "none" || parseFloat(style.opacity) === 0 || style.contentVisibility === "hidden";
 }
 function closestComposed(element, predicate) {
   let currentElement = element;
@@ -170,13 +164,14 @@ function checkInteractivity(element, checks = {}) {
       }
       let currentElement = element;
       while (currentElement) {
-        if (hidesSubtree(getComputedStyle(currentElement))) {
+        const style2 = getComputedStyle(currentElement);
+        if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
           return {
             isInteractive: false,
             reason: "invisible"
           };
         }
-        currentElement = getComposedParentElement(currentElement);
+        currentElement = getParentElement(currentElement);
       }
     }
   }
