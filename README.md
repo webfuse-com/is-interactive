@@ -35,19 +35,25 @@ const surfaceDOMSnapshot = selector => {
 ``` ts
 // Toggle checks to perform (default: all enabled, except 'offViewport')
 interface InteractivityChecks {
-  clipped: boolean;       // true
-  collapsed: boolean;     // true
-  disabled: boolean;      // true
-  disconnected: boolean;  // true
-  hidden: boolean;        // true
-  inert: boolean;         // true
-  invisible: boolean;     // true
-  modalBlocked: boolean;  // true
-  occluded: boolean;      // true
-  unclickable: boolean;   // true
-  ariaHidden: boolean;    // false
-  offScrolled: boolean;   // false
-  offViewport: boolean;   // false
+  clipped: boolean;          // true
+  collapsed: boolean;        // true
+  disabled: boolean;         // true
+  disconnected: boolean;     // true
+  hidden: boolean;           // true
+  inert: boolean;            // true
+  invisible: boolean;        // true
+  modalBlocked: boolean;     // true
+  occluded: boolean;         // true
+  unclickable: boolean;      // true
+  ariaHidden: boolean;       // false
+  offScrolled: boolean;      // false
+  offViewport: boolean;      // false
+}
+
+interface InteractivityOptions {
+  // Skip checks inherited from parents ('hidden', 'inert', 'ariaHidden', 'invisible'),
+  // e.g., when parents are known to be checked already
+  skipParentChecks: boolean; // false
 }
 
 /**
@@ -55,7 +61,8 @@ interface InteractivityChecks {
  */
 function checkInteractivity(
   element: Element,
-  checks?: InteractivityChecks
+  checks?: InteractivityChecks,
+  options?: InteractivityOptions
 ): {
   isInteractive: boolean;
   reason?:

@@ -25,6 +25,9 @@ const DEFAULT_INTERACTIVITY_CHECKS = {
   ariaHidden: false
   // might be exclusive to non-GUI navigation
 };
+const DEFAULT_INTERACTIVITY_OPTIONS = {
+  skipParentChecks: false
+};
 function readProperty(element, property) {
   if (!(element instanceof HTMLFormElement) || !Object.prototype.hasOwnProperty.call(element, property)) return element[property];
   const getter = Object.getOwnPropertyDescriptor(HTMLElement.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Element.prototype, property)?.get ?? Object.getOwnPropertyDescriptor(Node.prototype, property)?.get;
@@ -42,11 +45,11 @@ function getParentElement(element) {
   }
   return null;
 }
-function closestComposed(element, predicate) {
+function closestComposed(element, predicate, skipParents = false) {
   let currentElement = element;
   while (currentElement) {
     if (predicate(currentElement)) return currentElement;
-    currentElement = getParentElement(currentElement);
+    currentElement = skipParents ? null : getParentElement(currentElement);
   }
   return null;
 }
@@ -70,7 +73,7 @@ function isBlockedByModal(element) {
   });
   return !hasModalAncestor;
 }
-function checkInteractivity(element, checks = {}) {
+function checkInteractivity(element, checks = {}, options = {}) {
   if (element?.nodeType !== 1) {
     return {
       isInteractive: false,
@@ -80,6 +83,10 @@ function checkInteractivity(element, checks = {}) {
   checks = {
     ...DEFAULT_INTERACTIVITY_CHECKS,
     ...checks ?? {}
+  };
+  options = {
+    ...DEFAULT_INTERACTIVITY_OPTIONS,
+    ...options ?? {}
   };
   if (checks.disconnected) {
     if (readProperty(element, "isConnected") !== true) {
@@ -101,7 +108,7 @@ function checkInteractivity(element, checks = {}) {
     let currentElement = element;
     while (currentElement) {
       if (!(currentElement instanceof HTMLElement)) {
-        currentElement = getParentElement(currentElement);
+        currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
         continue;
       }
       if (checks.hidden && readProperty(currentElement, "hidden") === true) {
@@ -120,7 +127,7 @@ function checkInteractivity(element, checks = {}) {
           reason: "inert"
         };
       }
-      currentElement = getParentElement(currentElement);
+      currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
     }
   }
   if (checks.disabled) {
@@ -138,7 +145,7 @@ function checkInteractivity(element, checks = {}) {
     }
   }
   if (checks.ariaHidden) {
-    if (closestComposed(element, (el) => el.getAttribute("aria-hidden") === "true")) {
+    if (closestComposed(element, (el) => el.getAttribute("aria-hidden") === "true", options.skipParentChecks)) {
       return {
         isInteractive: false,
         reason: "ariaHidden"
@@ -171,7 +178,7 @@ function checkInteractivity(element, checks = {}) {
             reason: "invisible"
           };
         }
-        currentElement = getParentElement(currentElement);
+        currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
       }
     }
   }

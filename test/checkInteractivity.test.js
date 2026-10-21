@@ -13,6 +13,22 @@ const TESTS = [
         expected: false
     },
     {
+        name: "ariaHidden.slot",
+        check: "ariaHidden",
+        expected: false
+    },
+    {
+        name: "ariaHidden.parent",
+        check: "ariaHidden",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
+    },
+    {
         name: "clipped.true.1",
         check: "clipped",
         expected: true
@@ -48,6 +64,11 @@ const TESTS = [
         expected: false
     },
     {
+        name: "clipped.slot",
+        check: "clipped",
+        expected: false
+    },
+    {
         name: "collapsed",
         check: "collapsed",
         expected: false
@@ -73,6 +94,22 @@ const TESTS = [
         expected: true
     },
     {
+        name: "disabled.slot",
+        check: "disabled",
+        expected: false
+    },
+    {
+        name: "disabled.parent",
+        check: "disabled",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: false
+            }
+        ]
+    },
+    {
         name: "disconnected",
         check: "disconnected",
         expected: false
@@ -93,9 +130,41 @@ const TESTS = [
         expected: false
     },
     {
+        name: "hidden.slot",
+        check: "hidden",
+        expected: false
+    },
+    {
+        name: "hidden.parent",
+        check: "hidden",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
+    },
+    {
         name: "inert",
         check: "inert",
         expected: false
+    },
+    {
+        name: "inert.slot",
+        check: "inert",
+        expected: false
+    },
+    {
+        name: "inert.parent",
+        check: "inert",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
     },
     {
         name: "invisible.display",
@@ -116,6 +185,28 @@ const TESTS = [
         name: "invisible.slot",
         check: "invisible",
         expected: false
+    },
+    {
+        name: "invisible.parent",
+        check: "invisible",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
+    },
+    {
+        name: "invisible.self",
+        check: "invisible",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: false
+            }
+        ]
     },
     {
         name: "modalBlocked.true.1",
@@ -198,65 +289,86 @@ test("checkInteractivity()", async () => {
                     join(import.meta.dirname, TEST_NAME, `${reference.name}.test.html`)
                 }`;
 
-                const returnValue = await runBrowser(testFileURL, async check => {
+                // Base case and option variants share one page load
+                const cases = [
+                    {
+                        options: {},
+                        expected: reference.expected
+                    },
+                    ...(reference.variants ?? [])
+                ];
+
+                const returnValues = await runBrowser(testFileURL, async (check, optionsList) => {
                     const TARGET_ELEMENT_KEY = "TARGET";
 
-                    try {
-                        return {
-                            result: window.IsInteractive.checkInteractivity(
-                                window[TARGET_ELEMENT_KEY]
-                                ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`),
-                                {
-                                    clipped: false,
-                                    collapsed: false,
-                                    disabled: false,
-                                    disconnected: false,
-                                    hidden: false,
-                                    inert: false,
-                                    invisible: false,
-                                    modalBlocked: false,
-                                    occluded: false,
-                                    unclickable: false,
-                                    ariaHidden: false,
-                                    offScrolled: false,
-                                    offViewport: false,
+                    return optionsList
+                        .map(options => {
+                            try {
+                                return {
+                                    result: window.IsInteractive.checkInteractivity(
+                                        window[TARGET_ELEMENT_KEY]
+                                        ?? document.querySelector(`#${TARGET_ELEMENT_KEY}`),
+                                        {
+                                            clipped: false,
+                                            collapsed: false,
+                                            disabled: false,
+                                            disconnected: false,
+                                            hidden: false,
+                                            inert: false,
+                                            invisible: false,
+                                            modalBlocked: false,
+                                            occluded: false,
+                                            unclickable: false,
+                                            ariaHidden: false,
+                                            offScrolled: false,
+                                            offViewport: false,
 
-                                    // only enable tested check
-                                    [ check ]: true,
-                                }
-                            )
-                        };
-                    } catch(err) {
-                        return {
-                            error: err?.message || String(err)
-                        };
-                    }
-                }, [ reference.check ]);
+                                            // only enable tested check
+                                            [ check ]: true,
+                                        },
+                                        options
+                                    )
+                                };
+                            } catch(err) {
+                                return {
+                                    error: err?.message || String(err)
+                                };
+                            }
+                        });
+                }, [ reference.check, cases.map(testCase => testCase.options) ]);
 
-                if(returnValue.error) {
-                    console.error(`\x1b[31m${returnValue.error}\x1b[0m`);
+                cases
+                    .forEach((testCase, index) => {
+                        const returnValue = returnValues[index];
+                        const label = Object.keys(testCase.options).length
+                            ? `${reference.name} ${JSON.stringify(testCase.options)}`
+                            : reference.name;
 
-                    process.exit(2);
-                }
+                        if(returnValue.error) {
+                            console.error(`\x1b[31m${returnValue.error}\x1b[0m`);
 
-                console.log(`\x1b[2m• '${reference.name}'\x1b[0m`);
+                            process.exit(2);
+                        }
 
-                const actual = returnValue.result;
+                        console.log(`\x1b[2m• '${label}'\x1b[0m`);
 
-                if(!("isInteractive" in actual)) throw new SyntaxError(`Invalid test value (actual): ${String(actual)}`);
+                        const actual = returnValue.result;
 
-                assertEqual(
-                    actual.isInteractive,
-                    reference.expected,
-                    `Element is${!actual.isInteractive ? " not" : ""} interactive`
-                );
+                        if(!("isInteractive" in actual)) throw new SyntaxError(`Invalid test value (actual): ${String(actual)}`);
 
-                (!actual.isInteractive && !reference.expected)
-                    && assertEqual(
-                        actual.reason,
-                        reference.check,
-                        `Invalid failure reason: '${actual.reason}'`
-                    );
+                        assertEqual(
+                            actual.isInteractive,
+                            testCase.expected,
+                            `${label}: Element is${!actual.isInteractive ? " not" : ""} interactive`
+                        );
+
+                        (!actual.isInteractive && !testCase.expected)
+                            && assertEqual(
+                                actual.reason,
+                                reference.check,
+                                `${label}: Invalid failure reason: '${actual.reason}'`
+                            );
+                    });
             })
     );
 });

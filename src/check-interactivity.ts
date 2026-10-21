@@ -1,4 +1,4 @@
-import { type InteractivityChecks, type InteractivityResult } from "./types.js";
+import { type InteractivityChecks, type InteractivityOptions, type InteractivityResult } from "./types.js";
 import { isElementOccluded } from "./util.occlusion.js";
 
 
@@ -25,6 +25,9 @@ const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
     offScrolled: false, // consider full document
     offViewport: false, // consider full document
     ariaHidden: false,  // might be exclusive to non-GUI navigation
+};
+const DEFAULT_INTERACTIVITY_OPTIONS: InteractivityOptions = {
+    skipParentChecks: false
 };
 
 
@@ -62,13 +65,13 @@ function getParentElement(element: Element | null): Element | null {
     return null;
 }
 
-function closestComposed(element: Element, predicate: (element: Element) => boolean): Element | null {
+function closestComposed(element: Element, predicate: (element: Element) => boolean, skipParents: boolean = false): Element | null {
     let currentElement: Element | null = element;
 
     while(currentElement) {
         if(predicate(currentElement)) return currentElement;
 
-        currentElement = getParentElement(currentElement);
+        currentElement = skipParents ? null : getParentElement(currentElement);
     }
 
     return null;
@@ -105,7 +108,11 @@ function isBlockedByModal(element: Element): boolean {
 }
 
 
-export function checkInteractivity(element: Element, checks: Partial<InteractivityChecks> = {}): InteractivityResult {
+export function checkInteractivity(
+    element: Element,
+    checks: Partial<InteractivityChecks> = {},
+    options: Partial<InteractivityOptions> = {}
+): InteractivityResult {
     if(element?.nodeType !== 1) {
         return {
             isInteractive: false,
@@ -116,6 +123,10 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     checks = {
         ...DEFAULT_INTERACTIVITY_CHECKS,
         ...(checks ?? {})
+    };
+    options = {
+        ...DEFAULT_INTERACTIVITY_OPTIONS,
+        ...(options ?? {})
     };
 
     // Checks are in ascending order of computational cost!
@@ -143,7 +154,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
  
         while(currentElement) {
             if(!(currentElement instanceof HTMLElement)) {
-                currentElement = getParentElement(currentElement);
+                currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
 
                 continue;
             }
@@ -172,7 +183,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                 };
             }
  
-            currentElement = getParentElement(currentElement);
+            currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
         }
     }
 
@@ -193,7 +204,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
     }
 
     if(checks.ariaHidden) {
-        if(closestComposed(element, el => el.getAttribute("aria-hidden") === "true")) {
+        if(closestComposed(element, el => el.getAttribute("aria-hidden") === "true", options.skipParentChecks)) {
             return {
                 isInteractive: false,
                 reason: "ariaHidden"
@@ -237,7 +248,7 @@ export function checkInteractivity(element: Element, checks: Partial<Interactivi
                     };
                 }
 
-                currentElement = getParentElement(currentElement);
+                currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
             }
         }
     }

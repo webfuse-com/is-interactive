@@ -14,6 +14,10 @@ export interface InteractivityChecks {
     occluded: boolean;
 }
 
+export interface InteractivityOptions {
+    skipParentChecks: boolean;
+}
+
 export interface InteractivityResult {
     isInteractive: boolean;
     reason?: "notElement" | keyof InteractivityChecks;
