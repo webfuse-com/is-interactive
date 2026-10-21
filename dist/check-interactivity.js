@@ -60,14 +60,15 @@ function getGeometryTarget(element) {
   if (select.multiple || select.size > 1) return element;
   return select;
 }
-function isBlockedByModal(element) {
-  let hasModal;
+function hasModalDialog() {
   try {
-    hasModal = !!document.querySelector("dialog:modal");
+    return !!document.querySelector("dialog:modal");
   } catch {
     return false;
   }
-  if (!hasModal) return false;
+}
+function isBlockedByModal(element) {
+  if (!hasModalDialog()) return false;
   const hasModalAncestor = closestComposed(element, (element2) => {
     return element2.tagName.toUpperCase() === "DIALOG" && element2.matches(":modal");
   });
@@ -330,5 +331,7 @@ function checkInteractivity(element, checks = {}, options = {}) {
   };
 }
 export {
-  checkInteractivity
+  DEFAULT_INTERACTIVITY_CHECKS,
+  checkInteractivity,
+  hasModalDialog
 };

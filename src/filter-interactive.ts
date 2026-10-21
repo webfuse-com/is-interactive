@@ -1,4 +1,4 @@
-import { checkInteractivity } from "./check-interactivity.js";
+import { checkInteractivity, DEFAULT_INTERACTIVITY_CHECKS, hasModalDialog } from "./check-interactivity.js";
 import { type InteractivityChecks, type InteractivityResult } from "./types.js";
 
 
@@ -8,6 +8,14 @@ const CASCADING_NON_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks 
     "inert",
     "ariaHidden",
     "invisible"
+]);
+// Checks evaluated after all cascading checks (order in checkInteractivity)
+const POST_CASCADING_INTERACTIVITY_CHECKS: ReadonlySet<keyof InteractivityChecks | "notElement"> = new Set([
+    "collapsed",
+    "clipped",
+    "offScrolled",
+    "offViewport",
+    "occluded"
 ]);
 const DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS: Map<string, Partial<InteractivityChecks>> = new Map(
     Object.entries({
@@ -33,6 +41,16 @@ function pickCascading(overrides: Partial<InteractivityChecks>): Partial<Interac
         Object.entries(overrides)
             .filter((entry: [ string, unknown ]) => CASCADING_NON_INTERACTIVITY_CHECKS.has(entry[0] as keyof InteractivityChecks))
     );
+}
+
+function pickEnabledCascading(checks: Partial<InteractivityChecks>): (keyof InteractivityChecks)[] {
+    const effectiveChecks: InteractivityChecks = {
+        ...DEFAULT_INTERACTIVITY_CHECKS,
+        ...checks
+    };
+
+    return ([ ...CASCADING_NON_INTERACTIVITY_CHECKS ] as (keyof InteractivityChecks)[])
+        .filter((check: keyof InteractivityChecks) => effectiveChecks[check]);
 }
 
 function collectRescueSelectors(
@@ -112,6 +130,7 @@ function filterDOM(
     inheritedChecks: Partial<InteractivityChecks>,
     elementOverrideChecks: Map<string, Partial<InteractivityChecks>>,
     rescueSelectors: Map<string, string>,
+    parentVerifiedChecks: ReadonlySet<keyof InteractivityChecks>,
     onNonInteractive?: (liveElement: Element, reason: InteractivityResult["reason"]) => void
 ): boolean {
     const overrides: Partial<InteractivityChecks> = elementOverrideChecks.get(liveElement.tagName.toLowerCase()) ?? {};
@@ -127,7 +146,23 @@ function filterDOM(
         ? { ...inheritedChecks, ...pickCascading(overrides) }
         : inheritedChecks;
 
-    const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks);
+    const enabledCascadingChecks: (keyof InteractivityChecks)[] = pickEnabledCascading(applicableChecks);
+
+    // Slotted elements render within their slot, not within the traversed parent
+    const skipParentChecks: boolean = !(liveElement as any).assignedSlot
+        && enabledCascadingChecks.every((check: keyof InteractivityChecks) => parentVerifiedChecks.has(check));
+
+    const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks, {
+        skipParentChecks
+    });
+
+    // Element and its ancestors pass these checks
+    const verifiedChecks: ReadonlySet<keyof InteractivityChecks> = (
+        result.isInteractive
+        || (!!result.reason && POST_CASCADING_INTERACTIVITY_CHECKS.has(result.reason))
+    )
+        ? new Set(enabledCascadingChecks)
+        : new Set();
 
     if(onNonInteractive && !result.isInteractive) {
         onNonInteractive(liveElement, result.reason);
@@ -190,7 +225,7 @@ function filterDOM(
     let hasInteractiveDescendant: boolean = false;
 
     for(const [ liveElement, virtualElement ] of pairs) {
-        if(filterDOM(liveElement, virtualElement, false, checks, descendantChecks, elementOverrideChecks, rescueSelectors, onNonInteractive)) {
+        if(filterDOM(liveElement, virtualElement, false, checks, descendantChecks, elementOverrideChecks, rescueSelectors, verifiedChecks, onNonInteractive)) {
             hasInteractiveDescendant = true;
         }
     }
@@ -217,6 +252,18 @@ export function filterInteractive(
             .map((entry: [ string, Partial<InteractivityChecks> ]) => [ entry[0].toLowerCase(), entry[1] ])
     ); // coerce to Map
 
+    // Without a modal, no element is modal-blocked: avoid the document query per element
+    if(!hasModalDialog()) {
+        checks = {
+            ...checks,
+            modalBlocked: false
+        };
+        elementOverrideChecks = new Map(
+            [ ...elementOverrideChecks ]
+                .map((entry: [ string, Partial<InteractivityChecks> ]) => [ entry[0], { ...entry[1], modalBlocked: false } ])
+        );
+    }
+
     const rescueSelectors: Map<string, string> = collectRescueSelectors(elementOverrideChecks);
 
     const liveRoot: Element = (dom instanceof Document)
@@ -227,7 +274,7 @@ export function filterInteractive(
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);
 
-    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, onNonInteractive);
+    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, new Set(), onNonInteractive);
 
     return virtualRoot;
 }

@@ -14,6 +14,32 @@ const TESTS = [
     },
     {
         name: "shadow-dom"
+    },
+    {
+        name: "modal"
+    },
+    {
+        name: "skip-parent.nested"
+    },
+    {
+        name: "skip-parent.rescue"
+    },
+    {
+        name: "skip-parent.slot"
+    },
+    {
+        name: "skip-parent.unclickable"
+    },
+    {
+        name: "skip-parent.override",
+        elementOverrideChecks: {
+            "div": {
+                invisible: false
+            },
+            "button": {
+                invisible: true
+            }
+        }
     }
 ];
 
@@ -75,7 +101,7 @@ test("filterInteractive()", async () => {
                 const testFileURL = `file://${join(import.meta.dirname, TEST_NAME, `${reference.name}.test.html`)
                     }`;
 
-                const returnValue = await runBrowser(testFileURL, async () => {
+                const returnValue = await runBrowser(testFileURL, async elementOverrideChecks => {
                     const TARGET_ELEMENT_KEY = "TARGET";
 
                     try {
@@ -90,7 +116,7 @@ test("filterInteractive()", async () => {
                                 offScrolled: true,
                                 offViewport: false
                             },
-                            {   // per-element overrides
+                            elementOverrideChecks ?? {   // per-element overrides
                                 "input": {
                                     clipped: false,   // as default
                                     collapsed: false,   // as default
@@ -127,7 +153,7 @@ test("filterInteractive()", async () => {
                             error: err?.message || String(err)
                         };
                     }
-                });
+                }, [ reference.elementOverrideChecks ?? null ]);
 
                 if (returnValue.error) {
                     console.error(`\x1b[31m${returnValue.error}\x1b[0m`);

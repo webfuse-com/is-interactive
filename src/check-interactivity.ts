@@ -10,7 +10,7 @@ const OPTION_TAG_NAMES: string[] = [ "OPTION", "OPTGROUP" ];
 const MIN_OCCLUSION_SAMPLES = 6;
 const MAX_OCCLUSION_SAMPLES: number = 42;
 
-const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
+export const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
     disconnected: true,
     modalBlocked: true,
     hidden: true,
@@ -89,16 +89,16 @@ function getGeometryTarget(element: Element): Element {
     return select;
 }
 
-function isBlockedByModal(element: Element): boolean {
-    let hasModal: boolean;
-
+export function hasModalDialog(): boolean {
     try {
-        hasModal = !!document.querySelector("dialog:modal");
+        return !!document.querySelector("dialog:modal");
     } catch {
         return false;
     }
+}
 
-    if(!hasModal) return false;
+function isBlockedByModal(element: Element): boolean {
+    if(!hasModalDialog()) return false;
 
     const hasModalAncestor: Element | null = closestComposed(element, element => {
         return (element.tagName.toUpperCase() === "DIALOG") && element.matches(":modal");

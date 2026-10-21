@@ -227,14 +227,15 @@
     if (select.multiple || select.size > 1) return element;
     return select;
   }
-  function isBlockedByModal(element) {
-    let hasModal;
+  function hasModalDialog() {
     try {
-      hasModal = !!document.querySelector("dialog:modal");
+      return !!document.querySelector("dialog:modal");
     } catch {
       return false;
     }
-    if (!hasModal) return false;
+  }
+  function isBlockedByModal(element) {
+    if (!hasModalDialog()) return false;
     const hasModalAncestor = closestComposed(element, (element2) => {
       return element2.tagName.toUpperCase() === "DIALOG" && element2.matches(":modal");
     });
@@ -505,6 +506,13 @@
     "ariaHidden",
     "invisible"
   ]);
+  var POST_CASCADING_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
+    "collapsed",
+    "clipped",
+    "offScrolled",
+    "offViewport",
+    "occluded"
+  ]);
   var DEFAULT_FILTER_OVERRIDE_INTERACTIVITY_CHECKS = new Map(
     Object.entries({
       // Do not filter 'styled' inputs (commonly deliberately hidden or occluded by click-through custom UI)
@@ -526,6 +534,13 @@
     return Object.fromEntries(
       Object.entries(overrides).filter((entry) => CASCADING_NON_INTERACTIVITY_CHECKS.has(entry[0]))
     );
+  }
+  function pickEnabledCascading(checks) {
+    const effectiveChecks = {
+      ...DEFAULT_INTERACTIVITY_CHECKS,
+      ...checks
+    };
+    return [...CASCADING_NON_INTERACTIVITY_CHECKS].filter((check) => effectiveChecks[check]);
   }
   function collectRescueSelectors(elementOverrideChecks) {
     const tagNamesByReason = /* @__PURE__ */ new Map();
@@ -575,7 +590,7 @@
     const parent = virtual.parentElement ?? virtual.parentNode;
     parent?.removeChild(virtual);
   }
-  function filterDOM(liveElement, virtualElement, isRoot, checks, inheritedChecks, elementOverrideChecks, rescueSelectors, onNonInteractive) {
+  function filterDOM(liveElement, virtualElement, isRoot, checks, inheritedChecks, elementOverrideChecks, rescueSelectors, parentVerifiedChecks, onNonInteractive) {
     const overrides = elementOverrideChecks.get(liveElement.tagName.toLowerCase()) ?? {};
     const applicableChecks = {
       ...checks,
@@ -583,7 +598,10 @@
       ...overrides
     };
     const descendantChecks = Object.keys(overrides).length ? { ...inheritedChecks, ...pickCascading(overrides) } : inheritedChecks;
-    const result = checkInteractivity(liveElement, applicableChecks);
+    const enabledCascadingChecks = pickEnabledCascading(applicableChecks);
+    const skipParentChecks = !liveElement.assignedSlot && enabledCascadingChecks.every((check) => parentVerifiedChecks.has(check));
+    const result = checkInteractivity(liveElement, applicableChecks, { skipParentChecks });
+    const verifiedChecks = result.isInteractive || !!result.reason && POST_CASCADING_INTERACTIVITY_CHECKS.has(result.reason) ? new Set(enabledCascadingChecks) : /* @__PURE__ */ new Set();
     if (onNonInteractive && !result.isInteractive) {
       onNonInteractive(liveElement, result.reason);
     }
@@ -624,7 +642,7 @@
     }
     let hasInteractiveDescendant = false;
     for (const [liveElement2, virtualElement2] of pairs) {
-      if (filterDOM(liveElement2, virtualElement2, false, checks, descendantChecks, elementOverrideChecks, rescueSelectors, onNonInteractive)) {
+      if (filterDOM(liveElement2, virtualElement2, false, checks, descendantChecks, elementOverrideChecks, rescueSelectors, verifiedChecks, onNonInteractive)) {
         hasInteractiveDescendant = true;
       }
     }
@@ -637,10 +655,19 @@
     elementOverrideChecks = new Map(
       Object.entries(elementOverrideChecks).map((entry) => [entry[0].toLowerCase(), entry[1]])
     );
+    if (!hasModalDialog()) {
+      checks = {
+        ...checks,
+        modalBlocked: false
+      };
+      elementOverrideChecks = new Map(
+        [...elementOverrideChecks].map((entry) => [entry[0], { ...entry[1], modalBlocked: false }])
+      );
+    }
     const rescueSelectors = collectRescueSelectors(elementOverrideChecks);
     const liveRoot = dom instanceof Document ? dom.documentElement : dom;
     const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
-    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, onNonInteractive);
+    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, /* @__PURE__ */ new Set(), onNonInteractive);
     return virtualRoot;
   }
 
