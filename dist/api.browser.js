@@ -199,6 +199,8 @@
   }
   function getParentElement(element) {
     if (!element) return null;
+    const slot = readProperty(element, "assignedSlot");
+    if (slot) return slot;
     const parent = readProperty(element, "parentElement");
     if (parent) return parent;
     const root = element.getRootNode();

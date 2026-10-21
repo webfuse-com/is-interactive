@@ -44,6 +44,11 @@ function readProperty<T>(element: Element, property: string): T | undefined {
 function getParentElement(element: Element | null): Element | null {
     if(!element) return null;
 
+    // Slotted elements render within their slot (flat tree)
+    const slot = readProperty<HTMLSlotElement | null>(element, "assignedSlot");
+
+    if(slot) return slot;
+
     const parent = readProperty<Element | null>(element, "parentElement");
 
     if(parent) return parent;
