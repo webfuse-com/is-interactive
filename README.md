@@ -121,6 +121,8 @@ function filterInteractive(
 >
 > This accounts for custom-style input patterns (e.g., occluded by click-receiver element).
 
+> The `occluded` check temporarily scrolls elements into view (restored synchronously; the resulting scroll events are suppressed). With `offViewport` or `offScrolled` enabled, the window or scroll containers, respectively, are not scrolled: elements that pass these checks are partially in view already.
+
 ### Shadow DOM
 
 Checks follow the rendered (flat) tree: slotted elements are assessed within their slot, and `filterInteractive` keeps open shadow roots in the virtual DOM. Closed shadow roots cannot be inspected: their contents are not filtered, and content slotted into them is assessed as if placed in the host. Closed `<details>` are handled explicitly.

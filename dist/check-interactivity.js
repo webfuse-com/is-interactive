@@ -69,6 +69,15 @@ function getGeometryTarget(element) {
   return select;
 }
 let cachedHasModalDialog = null;
+function isOccluded(element, scrollPolicy) {
+  const geometryTarget = getGeometryTarget(element);
+  const rect = geometryTarget.getBoundingClientRect();
+  const occlusionSamples = Math.max(
+    MIN_OCCLUSION_SAMPLES,
+    Math.min(MAX_OCCLUSION_SAMPLES, Math.round(rect.width * rect.height / 4e3))
+  );
+  return isElementOccluded(geometryTarget, occlusionSamples, scrollPolicy);
+}
 function containsModalDialog(root) {
   if (root.querySelector("dialog:modal")) return true;
   for (const element of root.querySelectorAll("*")) {
@@ -340,12 +349,11 @@ function checkInteractivity(element, checks = {}, options = {}) {
       }
     }
     if (checks.occluded) {
-      const area = rect.width * rect.height;
-      const occlusionSamples = Math.max(
-        MIN_OCCLUSION_SAMPLES,
-        Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4e3))
-      );
-      if (isElementOccluded(geometryTarget, occlusionSamples)) {
+      const scrollPolicy = {
+        containers: !checks.offScrolled,
+        viewport: !checks.offViewport
+      };
+      if (isOccluded(element, scrollPolicy)) {
         return {
           isInteractive: false,
           reason: "occluded"
@@ -360,6 +368,8 @@ function checkInteractivity(element, checks = {}, options = {}) {
 export {
   DEFAULT_INTERACTIVITY_CHECKS,
   checkInteractivity,
+  getGeometryTarget,
   hasModalDialog,
+  isOccluded,
   withModalDialogPresence
 };

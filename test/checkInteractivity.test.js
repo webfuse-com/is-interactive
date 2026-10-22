@@ -268,6 +268,28 @@ const TESTS = [
         expected: true
     },
     {
+        name: "occluded.viewport",
+        check: "occluded",
+        expected: true,
+        variants: [
+            {
+                checks: { offViewport: true },
+                expected: false
+            }
+        ]
+    },
+    {
+        name: "occluded.container",
+        check: "occluded",
+        expected: true,
+        variants: [
+            {
+                checks: { offScrolled: true },
+                expected: false
+            }
+        ]
+    },
+    {
         name: "offScrolled.false",
         check: "offScrolled",
         expected: false
@@ -388,20 +410,25 @@ test("checkInteractivity()", async () => {
                     join(import.meta.dirname, TEST_NAME, `${reference.name}.test.html`)
                 }`;
 
-                // Base case and option variants share one page load
+                // Base case and variants (options, additionally enabled checks) share one page load
                 const cases = [
                     {
-                        options: {},
                         expected: reference.expected
                     },
                     ...(reference.variants ?? [])
-                ];
+                ]
+                    .map(testCase => ({
+                        options: {},
+                        checks: {},
 
-                const returnValues = await runBrowser(testFileURL, async (check, optionsList) => {
+                        ...testCase
+                    }));
+
+                const returnValues = await runBrowser(testFileURL, async (check, variantList) => {
                     const TARGET_ELEMENT_KEY = "TARGET";
 
-                    return optionsList
-                        .map(options => {
+                    return variantList
+                        .map(({ options, checks }) => {
                             try {
                                 return {
                                     result: window.IsInteractive.checkInteractivity(
@@ -423,7 +450,8 @@ test("checkInteractivity()", async () => {
                                             offScrolled: false,
                                             offViewport: false,
 
-                                            // only enable tested check
+                                            // only enable tested (and variant) checks
+                                            ...checks,
                                             [ check ]: true,
                                         },
                                         options
@@ -435,13 +463,14 @@ test("checkInteractivity()", async () => {
                                 };
                             }
                         });
-                }, [ reference.check, cases.map(testCase => testCase.options) ]);
+                }, [ reference.check, cases.map(testCase => ({ options: testCase.options, checks: testCase.checks })) ]);
 
                 cases
                     .forEach((testCase, index) => {
                         const returnValue = returnValues[index];
-                        const label = Object.keys(testCase.options).length
-                            ? `${reference.name} ${JSON.stringify(testCase.options)}`
+                        const variant = { ...testCase.options, ...testCase.checks };
+                        const label = Object.keys(variant).length
+                            ? `${reference.name} ${JSON.stringify(variant)}`
                             : reference.name;
 
                         if(returnValue.error) {

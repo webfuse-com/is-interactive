@@ -1,5 +1,6 @@
 import { type InteractivityChecks, type InteractivityOptions, type InteractivityResult } from "./types.js";
 import { isElementOccluded } from "./util.occlusion.js";
+import { type ScrollIntoViewPolicy } from "./util.scroll.js";
 
 
 const VISIBILITY_STYLE_OFF_VALUES: string[] = [ "hidden", "collapse" ];
@@ -94,7 +95,7 @@ function closestComposed(element: Element, predicate: (element: Element) => bool
     return null;
 }
 
-function getGeometryTarget(element: Element): Element {
+export function getGeometryTarget(element: Element): Element {
     if(!OPTION_TAG_NAMES.includes(element.tagName)) return element;
 
     const select: HTMLSelectElement | null = element.closest("select");
@@ -108,6 +109,20 @@ function getGeometryTarget(element: Element): Element {
 
 let cachedHasModalDialog: boolean | null = null;
 
+
+/**
+ * Whether an element is occluded (on its geometry target), scrolled into view as permitted.
+ */
+export function isOccluded(element: Element, scrollPolicy: ScrollIntoViewPolicy): boolean {
+    const geometryTarget: Element = getGeometryTarget(element);
+    const rect: DOMRect = geometryTarget.getBoundingClientRect();
+    const occlusionSamples: number = Math.max(
+        MIN_OCCLUSION_SAMPLES,
+        Math.min(MAX_OCCLUSION_SAMPLES, Math.round((rect.width * rect.height) / 4000))
+    );
+
+    return isElementOccluded(geometryTarget, occlusionSamples, scrollPolicy);
+}
 
 function containsModalDialog(root: Document | ShadowRoot): boolean {
     if(root.querySelector("dialog:modal")) return true;
@@ -502,13 +517,13 @@ export function checkInteractivity(
         }
 
         if(checks.occluded) {
-            const area: number = rect.width * rect.height;
-            const occlusionSamples: number = Math.max(
-                MIN_OCCLUSION_SAMPLES,
-                Math.min(MAX_OCCLUSION_SAMPLES, Math.round(area / 4000))
-            );
+            // Passed position checks guarantee a part in view: no scrolling needed
+            const scrollPolicy: ScrollIntoViewPolicy = {
+                containers: !checks.offScrolled,
+                viewport: !checks.offViewport
+            };
 
-            if(isElementOccluded(geometryTarget, occlusionSamples)) {
+            if(isOccluded(element, scrollPolicy)) {
                 return {
                     isInteractive: false,
                     reason: "occluded"

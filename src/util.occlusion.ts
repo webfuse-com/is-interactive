@@ -1,10 +1,12 @@
-import { scrollIntoViewSynchronously } from "./util.scroll.js";
+import { resolveParent, scrollIntoViewSynchronously, type ScrollIntoViewPolicy } from "./util.scroll.js";
 
 
 // left, top, right, bottom
 type Box = [ number, number, number, number ];
 
 const MIN_BOX_SIZE: number = 1;
+const SCROLL_OVERFLOW_VALUES: string[] = [ "auto", "scroll" ];
+const CONTAINER_POSITION_VALUES: string[] = [ "relative", "absolute", "fixed", "sticky" ];
 
 
 function createBox(left: number, top: number, right: number, bottom: number): Box | null {
@@ -53,6 +55,48 @@ function getCoveredBox(occluder: Element | null, x: number, y: number, box: Box)
 
     return intersectBoxes([ x - width, y - height, x + width, y + height ], box)
         ?? box;
+}
+
+/**
+ * Area of the viewport that the element's scroll containers show (respecting containing blocks).
+ */
+function getScrollContainerClipBox(element: Element, viewportBox: Box): Box | null {
+    let clipBox: Box | null = viewportBox;
+    let position: string = getComputedStyle(element).position;
+
+    if(position === "fixed") return clipBox;
+
+    let needsContainingBlock: boolean = (position === "absolute");
+
+    for(let ancestor: Element | null = resolveParent(element); ancestor && clipBox; ancestor = resolveParent(ancestor)) {
+        const style: CSSStyleDeclaration = getComputedStyle(ancestor);
+
+        position = style.position;
+
+        if(needsContainingBlock && !CONTAINER_POSITION_VALUES.includes(position)) continue;
+
+        needsContainingBlock = (position === "absolute");
+
+        const scrollsX: boolean = SCROLL_OVERFLOW_VALUES.includes(style.overflowX);
+        const scrollsY: boolean = SCROLL_OVERFLOW_VALUES.includes(style.overflowY);
+
+        if(scrollsX || scrollsY) {
+            const ancestorRect: DOMRect = ancestor.getBoundingClientRect();
+            const left: number = ancestorRect.left + ancestor.clientLeft;
+            const top: number = ancestorRect.top + ancestor.clientTop;
+
+            clipBox = intersectBoxes(clipBox, [
+                scrollsX ? left : -Infinity,
+                scrollsY ? top : -Infinity,
+                scrollsX ? (left + ancestor.clientWidth) : Infinity,
+                scrollsY ? (top + ancestor.clientHeight) : Infinity
+            ]);
+        }
+
+        if(position === "fixed") break;
+    }
+
+    return clipBox;
 }
 
 function composedContains(ancestor: Node, node: Node | null): boolean {
@@ -104,8 +148,7 @@ function isElementOnHit(
     element: Element,
     rect: DOMRect,
     samples: number,
-    viewportWidth: number,
-    viewportHeight: number
+    clipBox: Box
 ): boolean {
     const elementRoot: Node = element.getRootNode();
     // Hits retargeted to the element's tree, not to the outermost shadow host
@@ -115,14 +158,11 @@ function isElementOnHit(
     const centerY: number = rect.top + rect.height / 2;
 
     if((rect.width < MIN_BOX_SIZE) || (rect.height < MIN_BOX_SIZE)) {
-        return (centerX >= 0) && (centerY >= 0) && (centerX < viewportWidth) && (centerY < viewportHeight)
+        return (centerX >= clipBox[0]) && (centerY >= clipBox[1]) && (centerX < clipBox[2]) && (centerY < clipBox[3])
             && isRelatedHit(element, root.elementFromPoint(centerX, centerY));
     }
 
-    const visibleBox: Box | null = intersectBoxes(
-        [ rect.left, rect.top, rect.right, rect.bottom ],
-        [ 0, 0, viewportWidth, viewportHeight ]
-    );
+    const visibleBox: Box | null = intersectBoxes([ rect.left, rect.top, rect.right, rect.bottom ], clipBox);
 
     if(!visibleBox) return false;
 
@@ -182,18 +222,27 @@ function isElementOnHit(
 }
 
 
-export function isElementOccluded(element: Element, samples: number): boolean {
+export function isElementOccluded(
+    element: Element,
+    samples: number,
+    scrollPolicy: ScrollIntoViewPolicy = { containers: true, viewport: true }
+): boolean {
     const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
 
-    const scrollRestoreCbs: (() => void)[] = scrollIntoViewSynchronously(element);
+    const scrollRestoreCbs: (() => void)[] = scrollIntoViewSynchronously(element, scrollPolicy);
 
     let isOccluded: boolean = false;
 
     try {
         const rect: DOMRect = element.getBoundingClientRect();
+        const viewportBox: Box = [ 0, 0, viewportWidth, viewportHeight ];
+        // Not scrolled into view within its containers: only the part they show can be hit
+        const clipBox: Box | null = scrollPolicy.containers
+            ? viewportBox
+            : getScrollContainerClipBox(element, viewportBox);
 
-        isOccluded = !isElementOnHit(element, rect, samples, viewportWidth, viewportHeight);
+        isOccluded = !clipBox || !isElementOnHit(element, rect, samples, clipBox);
     } finally {
         for(let index: number = scrollRestoreCbs.length - 1; index >= 0; index--) {
             scrollRestoreCbs[index]();

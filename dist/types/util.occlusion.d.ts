@@ -1,1 +1,2 @@
-export declare function isElementOccluded(element: Element, samples: number): boolean;
+import { type ScrollIntoViewPolicy } from "./util.scroll.js";
+export declare function isElementOccluded(element: Element, samples: number, scrollPolicy?: ScrollIntoViewPolicy): boolean;

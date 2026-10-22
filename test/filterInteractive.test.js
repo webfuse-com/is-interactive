@@ -16,6 +16,9 @@ const TESTS = [
         name: "shadow-dom"
     },
     {
+        name: "scrolled"
+    },
+    {
         name: "modal"
     },
     {

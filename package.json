@@ -14,7 +14,8 @@
     "build": "npm run build:lib && npm run build:types && npm run build:browser",
     "test:checkInteractivity": "node ./test/checkInteractivity.test.js",
     "test:filterInteractive": "node ./test/filterInteractive.test.js",
-    "test": "npm run test:checkInteractivity && npm run test:filterInteractive",
+    "test:scrollEvents": "node ./test/scrollEvents.test.js",
+    "test": "npm run test:checkInteractivity && npm run test:filterInteractive && npm run test:scrollEvents",
     "debug": "node ./debug/debug.js"
   },
   "repository": {

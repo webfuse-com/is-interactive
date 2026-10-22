@@ -1,6 +1,31 @@
 const nativeScrollTop = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollTop"))?.set;
 const nativeScrollLeft = (Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft") ?? Object.getOwnPropertyDescriptor(HTMLElement.prototype, "scrollLeft"))?.set;
 const nativeWindowScrollTo = window.scrollTo.bind(window);
+const suppressedScrollPositions = /* @__PURE__ */ new Map();
+function readScrollPosition(target) {
+  return target === document ? [window.scrollX, window.scrollY] : [target.scrollLeft, target.scrollTop];
+}
+function suppressScrollEvent(event) {
+  if (!event.isTrusted || !event.target) return;
+  const position = suppressedScrollPositions.get(event.target);
+  if (!position) return;
+  const currentPosition = readScrollPosition(event.target);
+  if (currentPosition[0] !== position[0] || currentPosition[1] !== position[1]) return;
+  event.stopImmediatePropagation();
+}
+function suppressScrollEvents(target) {
+  if (suppressedScrollPositions.has(target)) return;
+  if (!suppressedScrollPositions.size) {
+    window.addEventListener("scroll", suppressScrollEvent, true);
+    window.addEventListener("scrollend", suppressScrollEvent, true);
+    requestAnimationFrame(() => {
+      window.removeEventListener("scroll", suppressScrollEvent, true);
+      window.removeEventListener("scrollend", suppressScrollEvent, true);
+      suppressedScrollPositions.clear();
+    });
+  }
+  suppressedScrollPositions.set(target, readScrollPosition(target));
+}
 function computeScrollDelta(near, far, viewport) {
   if (near >= 0 && far <= viewport) return 0;
   if (near < 0) return near;
@@ -13,12 +38,20 @@ function resolveParent(node) {
   const root = node.getRootNode();
   return root instanceof ShadowRoot ? root.host : null;
 }
-function scrollIntoViewSynchronously(element) {
+function scrollWindowTo(left, top) {
+  suppressScrollEvents(document);
+  nativeWindowScrollTo({
+    top,
+    left,
+    behavior: "instant"
+  });
+}
+function scrollIntoViewSynchronously(element, policy = { containers: true, viewport: true }) {
   const restoreCbs = [];
   if (!nativeScrollLeft || !nativeScrollTop) return restoreCbs;
   const visited = /* @__PURE__ */ new Set();
   let nextElement = resolveParent(element);
-  while (nextElement) {
+  while (nextElement && policy.containers) {
     if (visited.has(nextElement)) break;
     visited.add(nextElement);
     const currentElement = nextElement;
@@ -43,6 +76,7 @@ function scrollIntoViewSynchronously(element) {
       currentElement.clientHeight
     ) : 0;
     if (deltaX2 !== 0 || deltaY2 !== 0) {
+      suppressScrollEvents(currentElement);
       nativeScrollLeft.call(currentElement, previousLeft + deltaX2);
       nativeScrollTop.call(currentElement, previousTop + deltaY2);
       restoreCbs.push(() => {
@@ -51,6 +85,7 @@ function scrollIntoViewSynchronously(element) {
       });
     }
   }
+  if (!policy.viewport) return restoreCbs;
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
   const elementRect = element.getBoundingClientRect();
@@ -59,21 +94,16 @@ function scrollIntoViewSynchronously(element) {
   if (deltaX !== 0 || deltaY !== 0) {
     const previousX = window.scrollX;
     const previousY = window.scrollY;
-    nativeWindowScrollTo({
-      top: previousY + deltaY,
-      left: previousX + deltaX,
-      behavior: "instant"
-    });
+    scrollWindowTo(previousX + deltaX, previousY + deltaY);
     restoreCbs.push(() => {
-      nativeWindowScrollTo({
-        top: previousY,
-        left: previousX,
-        behavior: "instant"
-      });
+      scrollWindowTo(previousX, previousY);
     });
   }
   return restoreCbs;
 }
 export {
-  scrollIntoViewSynchronously
+  computeScrollDelta,
+  resolveParent,
+  scrollIntoViewSynchronously,
+  scrollWindowTo
 };

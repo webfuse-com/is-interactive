@@ -8,8 +8,60 @@ const nativeScrollLeft = (
 )?.set;
 const nativeWindowScrollTo = window.scrollTo.bind(window);
 
+// Scroll targets (document for the window) with the position to which they are restored
+const suppressedScrollPositions: Map<EventTarget, [ number, number ]> = new Map();
 
-function computeScrollDelta(near: number, far: number, viewport: number): number {
+
+export interface ScrollIntoViewPolicy {
+    containers: boolean;
+    viewport: boolean;
+}
+
+
+function readScrollPosition(target: EventTarget): [ number, number ] {
+    return (target === document)
+        ? [ window.scrollX, window.scrollY ]
+        : [ (target as Element).scrollLeft, (target as Element).scrollTop ];
+}
+
+/**
+ * Stop scroll events caused by temporary scrolling, which the browser dispatches on the next frame.
+ * Events of targets no longer at their restored position stem from genuine scrolling and pass.
+ */
+function suppressScrollEvent(event: Event): void {
+    if(!event.isTrusted || !event.target) return;
+
+    const position: [ number, number ] | undefined = suppressedScrollPositions.get(event.target);
+
+    if(!position) return;
+
+    const currentPosition: [ number, number ] = readScrollPosition(event.target);
+
+    if((currentPosition[0] !== position[0]) || (currentPosition[1] !== position[1])) return;
+
+    event.stopImmediatePropagation();
+}
+
+function suppressScrollEvents(target: EventTarget): void {
+    if(suppressedScrollPositions.has(target)) return;
+
+    if(!suppressedScrollPositions.size) {
+        window.addEventListener("scroll", suppressScrollEvent, true);
+        window.addEventListener("scrollend", suppressScrollEvent, true);
+
+        requestAnimationFrame(() => {
+            window.removeEventListener("scroll", suppressScrollEvent, true);
+            window.removeEventListener("scrollend", suppressScrollEvent, true);
+
+            suppressedScrollPositions.clear();
+        });
+    }
+
+    suppressedScrollPositions.set(target, readScrollPosition(target));
+}
+
+
+export function computeScrollDelta(near: number, far: number, viewport: number): number {
     if(near >= 0 && far <= viewport) return 0;
 
     if(near < 0) return near;
@@ -19,7 +71,7 @@ function computeScrollDelta(near: number, far: number, viewport: number): number
     return 0;
 }
 
-function resolveParent(node: Element): Element | null {
+export function resolveParent(node: Element): Element | null {
     if(node.assignedSlot) return node.assignedSlot;
 
     if(node.parentElement) return node.parentElement;
@@ -32,7 +84,24 @@ function resolveParent(node: Element): Element | null {
 }
 
 
-export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
+/**
+ * Scroll the window without smooth scrolling. Resulting scroll events are suppressed if the window is scrolled back
+ * before the next frame.
+ */
+export function scrollWindowTo(left: number, top: number): void {
+    suppressScrollEvents(document);
+
+    nativeWindowScrollTo({
+        top,
+        left,
+        behavior: "instant"
+    });
+}
+
+export function scrollIntoViewSynchronously(
+    element: Element,
+    policy: ScrollIntoViewPolicy = { containers: true, viewport: true }
+): (() => void)[] {
     const restoreCbs: (() => void)[] = [];
 
     if(!nativeScrollLeft || !nativeScrollTop) return restoreCbs;
@@ -40,7 +109,7 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
     const visited: Set<Element> = new Set();
     let nextElement: Element | null = resolveParent(element);
 
-    while(nextElement) {
+    while(nextElement && policy.containers) {
         if(visited.has(nextElement)) break;
 
         visited.add(nextElement);
@@ -86,6 +155,8 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
             : 0;
 
         if((deltaX !== 0) || (deltaY !== 0)) {
+            suppressScrollEvents(currentElement);
+
             nativeScrollLeft.call(currentElement, previousLeft + deltaX);
             nativeScrollTop.call(currentElement, previousTop + deltaY);
 
@@ -96,6 +167,8 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
                 });
         }
     }
+
+    if(!policy.viewport) return restoreCbs;
 
     const viewportWidth: number = window.innerWidth || document.documentElement.clientWidth;
     const viewportHeight: number = window.innerHeight || document.documentElement.clientHeight;
@@ -108,19 +181,11 @@ export function scrollIntoViewSynchronously(element: Element): (() => void)[] {
         const previousX: number = window.scrollX;
         const previousY: number = window.scrollY;
 
-        nativeWindowScrollTo({
-            top: previousY + deltaY,
-            left: previousX + deltaX,
-            behavior: "instant"
-        });
+        scrollWindowTo(previousX + deltaX, previousY + deltaY);
 
         restoreCbs.
             push((): void => {
-                nativeWindowScrollTo({
-                    top: previousY,
-                    left: previousX,
-                    behavior: "instant"
-                });
+                scrollWindowTo(previousX, previousY);
             });
     }
 
