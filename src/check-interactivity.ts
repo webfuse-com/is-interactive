@@ -238,12 +238,15 @@ export function checkInteractivity(
             let currentElement: Element | null = element;
 
             while(currentElement) {
-                const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+                // The element's own style is read above already
+                const currentStyle: CSSStyleDeclaration = (currentElement === element)
+                    ? style
+                    : getComputedStyle(currentElement);
 
                 if(
-                    (style.display === "none")
-                    || (parseFloat(style.opacity) === 0)
-                    || (style.contentVisibility === "hidden")
+                    (currentStyle.display === "none")
+                    || (parseFloat(currentStyle.opacity) === 0)
+                    || (currentStyle.contentVisibility === "hidden")
                 ) {
                     return {
                         isInteractive: false,

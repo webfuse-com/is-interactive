@@ -342,8 +342,8 @@
       if (checks.unrendered) {
         let currentElement = element;
         while (currentElement) {
-          const style2 = getComputedStyle(currentElement);
-          if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
+          const currentStyle = currentElement === element ? style : getComputedStyle(currentElement);
+          if (currentStyle.display === "none" || parseFloat(currentStyle.opacity) === 0 || currentStyle.contentVisibility === "hidden") {
             return {
               isInteractive: false,
               reason: "unrendered"
