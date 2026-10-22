@@ -7,7 +7,7 @@ const OVERFLOW_STYLE_CLIP_OFF_VALUES: string[] = [ "hidden", "clip" ];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES: string[] = [ "auto", "scroll" ];
 const CONTAINER_STYLE_POSITION_VALUES = [ "relative", "absolute", "fixed", "sticky" ];
 const OPTION_TAG_NAMES: string[] = [ "OPTION", "OPTGROUP" ];
-const MIN_OCCLUSION_SAMPLES = 6;
+const MIN_OCCLUSION_SAMPLES = 16;
 const MAX_OCCLUSION_SAMPLES: number = 42;
 
 export const DEFAULT_INTERACTIVITY_CHECKS: InteractivityChecks = {
@@ -66,6 +66,22 @@ function getParentElement(element: Element | null): Element | null {
     return null;
 }
 
+/**
+ * Whether a parent does not render an element although the element itself is rendered:
+ * unassigned children of a shadow host, and contents of a closed <details> but its summary.
+ */
+function isUnrenderedByParent(element: Element, parent: Element | null): boolean {
+    if(!parent || (readProperty<Element | null>(element, "parentElement") !== parent)) return false;
+
+    if(readProperty<ShadowRoot | null>(parent, "shadowRoot") && !readProperty<HTMLSlotElement | null>(element, "assignedSlot")) {
+        return true;
+    }
+
+    return (parent.tagName === "DETAILS")
+        && !(parent as HTMLDetailsElement).open
+        && (element !== parent.querySelector(":scope > summary"));
+}
+
 function closestComposed(element: Element, predicate: (element: Element) => boolean, skipParents: boolean = false): Element | null {
     let currentElement: Element | null = element;
 
@@ -90,16 +106,42 @@ function getGeometryTarget(element: Element): Element {
     return select;
 }
 
+let cachedHasModalDialog: boolean | null = null;
+
+
+function containsModalDialog(root: Document | ShadowRoot): boolean {
+    if(root.querySelector("dialog:modal")) return true;
+
+    for(const element of root.querySelectorAll("*")) {
+        if(element.shadowRoot && containsModalDialog(element.shadowRoot)) return true;
+    }
+
+    return false;
+}
+
 export function hasModalDialog(): boolean {
     try {
-        return !!document.querySelector("dialog:modal");
+        return containsModalDialog(document);
     } catch {
         return false;
     }
 }
 
+/**
+ * Reuse a known modal presence for checks within the callback (DOM must not change meanwhile).
+ */
+export function withModalDialogPresence<T>(hasModal: boolean, callback: () => T): T {
+    cachedHasModalDialog = hasModal;
+
+    try {
+        return callback();
+    } finally {
+        cachedHasModalDialog = null;
+    }
+}
+
 function isBlockedByModal(element: Element): boolean {
-    if(!hasModalDialog()) return false;
+    if(!(cachedHasModalDialog ?? hasModalDialog())) return false;
 
     const hasModalAncestor: Element | null = closestComposed(element, element => {
         return (element.tagName.toUpperCase() === "DIALOG") && element.matches(":modal");
@@ -239,11 +281,13 @@ export function checkInteractivity(
 
             while(currentElement) {
                 const style: CSSStyleDeclaration = getComputedStyle(currentElement);
+                const parentElement: Element | null = getParentElement(currentElement);
 
                 if(
                     (style.display === "none")
                     || (parseFloat(style.opacity) === 0)
                     || (style.contentVisibility === "hidden")
+                    || isUnrenderedByParent(currentElement, parentElement) // depends on parent: checked despite skipParentChecks
                 ) {
                     return {
                         isInteractive: false,
@@ -251,7 +295,7 @@ export function checkInteractivity(
                     };
                 }
 
-                currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
+                currentElement = options.skipParentChecks ? null : parentElement;
             }
         }
     }

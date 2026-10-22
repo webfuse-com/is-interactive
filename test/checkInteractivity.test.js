@@ -203,6 +203,16 @@ const TESTS = [
         expected: false
     },
     {
+        name: "modalBlocked.shadow.true",
+        check: "modalBlocked",
+        expected: true
+    },
+    {
+        name: "modalBlocked.shadow.false",
+        check: "modalBlocked",
+        expected: false
+    },
+    {
         name: "notElement",
         check: "notElement",
         expected: false
@@ -219,6 +229,41 @@ const TESTS = [
     },
     {
         name: "occluded.true.2",
+        check: "occluded",
+        expected: true
+    },
+    {
+        name: "occluded.shadow.false",
+        check: "occluded",
+        expected: false
+    },
+    {
+        name: "occluded.slot.true",
+        check: "occluded",
+        expected: true
+    },
+    {
+        name: "occluded.slot.scroll.true",
+        check: "occluded",
+        expected: true
+    },
+    {
+        name: "occluded.strip.true",
+        check: "occluded",
+        expected: true
+    },
+    {
+        name: "occluded.stacked.false",
+        check: "occluded",
+        expected: false
+    },
+    {
+        name: "occluded.rounded.true",
+        check: "occluded",
+        expected: true
+    },
+    {
+        name: "occluded.clipped.true",
         check: "occluded",
         expected: true
     },
@@ -276,6 +321,44 @@ const TESTS = [
         name: "unrendered.parent",
         check: "unrendered",
         expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: true
+            }
+        ]
+    },
+    {
+        name: "unrendered.details",
+        check: "unrendered",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: false
+            }
+        ]
+    },
+    {
+        name: "unrendered.details.summary.true",
+        check: "unrendered",
+        expected: true
+    },
+    {
+        name: "unrendered.unassigned",
+        check: "unrendered",
+        expected: false,
+        variants: [
+            {
+                options: { skipParentChecks: true },
+                expected: false
+            }
+        ]
+    },
+    {
+        name: "unrendered.shadow.true",
+        check: "unrendered",
+        expected: true,
         variants: [
             {
                 options: { skipParentChecks: true },

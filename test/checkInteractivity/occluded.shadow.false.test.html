@@ -1,0 +1,14 @@
+...
+<section>
+    <div id="HOST">
+        <template shadowrootmode="open">
+            <div style="position: relative;">
+                <button id="TARGET">Click here</button>
+                <div style="position: absolute; top: 0; right: 0; bottom: 0; left: 0; background-color: lime;"></div>
+            </div>
+        </template>
+    </div>
+    <script>
+        window.TARGET = document.querySelector("#HOST").shadowRoot.querySelector("#TARGET");
+    </script>
+</section>

@@ -1,4 +1,4 @@
-import { checkInteractivity, DEFAULT_INTERACTIVITY_CHECKS, hasModalDialog } from "./check-interactivity.js";
+import { checkInteractivity, DEFAULT_INTERACTIVITY_CHECKS, hasModalDialog, withModalDialogPresence } from "./check-interactivity.js";
 import { type InteractivityChecks, type InteractivityResult } from "./types.js";
 
 
@@ -154,9 +154,7 @@ function filterDOM(
     const skipParentChecks: boolean = !(liveElement as any).assignedSlot
         && enabledCascadingChecks.every((check: keyof InteractivityChecks) => parentVerifiedChecks.has(check));
 
-    const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks, {
-        skipParentChecks
-    });
+    const result: InteractivityResult = checkInteractivity(liveElement, applicableChecks, { skipParentChecks });
 
     // Element and its ancestors pass these checks
     const verifiedChecks: ReadonlySet<keyof InteractivityChecks> = (
@@ -254,8 +252,10 @@ export function filterInteractive(
             .map((entry: [ string, Partial<InteractivityChecks> ]) => [ entry[0].toLowerCase(), entry[1] ])
     ); // coerce to Map
 
+    const hasModal: boolean = hasModalDialog();
+
     // Without a modal, no element is modal-blocked: avoid the document query per element
-    if(!hasModalDialog()) {
+    if(!hasModal) {
         checks = {
             ...checks,
             modalBlocked: false
@@ -276,7 +276,9 @@ export function filterInteractive(
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
         : cloneWithShadow(liveRoot);
 
-    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, new Set(), onNonInteractive);
+    withModalDialogPresence(hasModal, () => {
+        filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, new Set(), onNonInteractive);
+    });
 
     return virtualRoot;
 }

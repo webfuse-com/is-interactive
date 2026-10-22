@@ -1,68 +1,58 @@
 import { scrollIntoViewSynchronously } from "./util.scroll.js";
 
 
+// left, top, right, bottom
+type Box = [ number, number, number, number ];
+
+const MIN_BOX_SIZE: number = 1;
+
+
+function createBox(left: number, top: number, right: number, bottom: number): Box | null {
+    return ((right - left) >= MIN_BOX_SIZE && (bottom - top) >= MIN_BOX_SIZE)
+        ? [ left, top, right, bottom ]
+        : null;
+}
+
+function intersectBoxes(a: Box, b: Box): Box | null {
+    return createBox(Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.min(a[3], b[3]));
+}
+
+function getBoxArea(box: Box): number {
+    return (box[2] - box[0]) * (box[3] - box[1]);
+}
+
 /**
- * Distribute sample points across a rect, starting at the center.
- * Additional sample points are scattered uniformly across the rect.
+ * Remainder of a box after removing a contained cut box.
  */
-function generateSamplePoints(rect: DOMRect, samples: number): [ number, number ][] {
-    const sampleCount: number = Math.max(1, Math.floor(samples));
+function subtractBox(box: Box, cut: Box): Box[] {
+    return [
+        createBox(box[0], box[1], box[2], cut[1]),
+        createBox(box[0], cut[3], box[2], box[3]),
+        createBox(box[0], cut[1], cut[0], cut[3]),
+        createBox(cut[2], cut[1], box[2], cut[3])
+    ]
+        .filter((box: Box | null): box is Box => !!box);
+}
 
-    const centerX: number = rect.left + rect.width / 2;
-    const centerY: number = rect.top + rect.height / 2;
+/**
+ * Box presumably covered by an occluder hit at a point within a box.
+ * Falls back to the quarter of the box around the point if the occluder geometry does not contain the point
+ * (e.g., a ::backdrop hit reported as its dialog).
+ */
+function getCoveredBox(occluder: Element | null, x: number, y: number, box: Box): Box {
+    for(const rect of (occluder?.getClientRects() ?? [])) {
+        if(x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) continue;
 
-    const samplePoints: [ number, number ][] = [ [ centerX, centerY ] ];
+        const coveredBox: Box | null = intersectBoxes([ rect.left, rect.top, rect.right, rect.bottom ], box);
 
-    if(sampleCount === 1) return samplePoints;
-
-    if(rect.width < 2 || rect.height < 2) return samplePoints;
-
-    const aspectRatio: number = rect.width / Math.max(1, rect.height);
-    const gridY: number = Math.max(1, Math.min(sampleCount, Math.round(Math.sqrt(sampleCount / Math.max(0.01, aspectRatio)))));
-    const gridX: number = Math.max(1, Math.min(sampleCount, Math.ceil(sampleCount / gridY)));
-
-    const top: number = rect.top + 1;
-    const bottom: number = rect.bottom - 1;
-    const left: number = rect.left + 1;
-    const right: number = rect.right - 1;
-
-    const stepX: number = (gridX > 1) ? (right - left) / (gridX - 1) : 0;
-    const stepY: number = (gridY > 1) ? (bottom - top) / (gridY - 1) : 0;
-
-    const seen: Set<string> = new Set();
-
-    seen.add(`${Math.round(centerX)},${Math.round(centerY)}`);
-
-    const candidates: Array<[ number, number, number ]> = [];
-
-    for(let row: number = 0; row < gridY; row++) {
-        for(let col: number = 0; col < gridX; col++) {
-            const x: number = gridX > 1 ? left + col * stepX : centerX;
-            const y: number = gridY > 1 ? top + row * stepY : centerY;
-
-            const key: string = `${Math.round(x)},${Math.round(y)}`;
-
-            if(seen.has(key)) continue;
-
-            seen.add(key);
-
-            const dx: number = x - centerX;
-            const dy: number = y - centerY;
-            const distanceSquared: number = dx * dx + dy * dy;
-
-            candidates.push([ x, y, distanceSquared ]);
-        }
+        if(coveredBox) return coveredBox;
     }
 
-    candidates.sort((a, b) => a[2] - b[2]);
+    const width: number = (box[2] - box[0]) / 4;
+    const height: number = (box[3] - box[1]) / 4;
 
-    for(let i: number = 0; i < candidates.length; i++) {
-        if(samplePoints.length >= sampleCount) break;
-
-        samplePoints.push([ candidates[i][0], candidates[i][1] ]);
-    }
-
-    return samplePoints;
+    return intersectBoxes([ x - width, y - height, x + width, y + height ], box)
+        ?? box;
 }
 
 function composedContains(ancestor: Node, node: Node | null): boolean {
@@ -75,7 +65,8 @@ function composedContains(ancestor: Node, node: Node | null): boolean {
 
         visited.add(node);
 
-        const parent: Node | null = node.parentNode;
+        // Slotted nodes render within their slot (flat tree)
+        const parent: Node | null = (node as Element).assignedSlot ?? node.parentNode;
 
         if(parent) {
             node = parent;
@@ -95,6 +86,20 @@ function composedContains(ancestor: Node, node: Node | null): boolean {
     return false;
 }
 
+function isRelatedHit(element: Element, hitElement: Element | null): boolean {
+    return !!hitElement
+        && (
+            (hitElement === element)
+            || composedContains(element, hitElement)
+            || composedContains(hitElement, element)
+        );
+}
+
+/**
+ * Search the element's visible area for a hit, largest unresolved part first.
+ * Occluder boxes are removed from the search area. Before concluding occlusion, their corners are spot-checked,
+ * where non-rectangular or clipped occluders would let the element through.
+ */
 function isElementOnHit(
     element: Element,
     rect: DOMRect,
@@ -102,25 +107,75 @@ function isElementOnHit(
     viewportWidth: number,
     viewportHeight: number
 ): boolean {
-    const points: [ number, number ][] = generateSamplePoints(rect, samples);
+    const elementRoot: Node = element.getRootNode();
+    // Hits retargeted to the element's tree, not to the outermost shadow host
+    const root: Document | ShadowRoot = (elementRoot instanceof ShadowRoot) ? elementRoot : document;
 
-    for(const point of points) {
-        const x: number = point[0];
-        const y: number = point[1];
+    const centerX: number = rect.left + rect.width / 2;
+    const centerY: number = rect.top + rect.height / 2;
 
-        if(x < 0 || y < 0 || x >= viewportWidth || y >= viewportHeight) continue;
+    if((rect.width < MIN_BOX_SIZE) || (rect.height < MIN_BOX_SIZE)) {
+        return (centerX >= 0) && (centerY >= 0) && (centerX < viewportWidth) && (centerY < viewportHeight)
+            && isRelatedHit(element, root.elementFromPoint(centerX, centerY));
+    }
 
-        const stack: Element[] = document.elementsFromPoint(x, y) ?? [];
+    const visibleBox: Box | null = intersectBoxes(
+        [ rect.left, rect.top, rect.right, rect.bottom ],
+        [ 0, 0, viewportWidth, viewportHeight ]
+    );
 
-        if(stack.length === 0) continue;
+    if(!visibleBox) return false;
 
-        const hitElement: Element = stack[0];
+    const boxes: Box[] = [ visibleBox ];
+    const coveredBoxes: Box[] = [];
+    const hits: Map<string, Element | null> = new Map();
 
-        if(
-            (hitElement === element)
-            || composedContains(element, hitElement)
-            || composedContains(hitElement, element)
-        ) return true;
+    let remainingHitTests: number = Math.max(1, Math.floor(samples));
+
+    const hitTest = (x: number, y: number): Element | null => {
+        const key: string = `${Math.round(x)},${Math.round(y)}`;
+
+        if(!hits.has(key)) {
+            remainingHitTests--;
+
+            hits.set(key, root.elementFromPoint(x, y));
+        }
+
+        return hits.get(key) ?? null;
+    };
+
+    while(boxes.length && (remainingHitTests > 0)) {
+        boxes.sort((a: Box, b: Box) => getBoxArea(b) - getBoxArea(a));
+
+        const box: Box = boxes.shift() as Box;
+        const x: number = (box[0] + box[2]) / 2;
+        const y: number = (box[1] + box[3]) / 2;
+
+        const hitElement: Element | null = hitTest(x, y);
+
+        if(isRelatedHit(element, hitElement)) return true;
+
+        const coveredBox: Box = getCoveredBox(hitElement, x, y, box);
+
+        coveredBoxes.push(coveredBox);
+        boxes.push(...subtractBox(box, coveredBox));
+    }
+
+    for(const coveredBox of coveredBoxes) {
+        if(((coveredBox[2] - coveredBox[0]) < 2) || ((coveredBox[3] - coveredBox[1]) < 2)) continue;
+
+        const corners: [ number, number ][] = [
+            [ coveredBox[0] + 1, coveredBox[1] + 1 ],
+            [ coveredBox[2] - 1, coveredBox[1] + 1 ],
+            [ coveredBox[0] + 1, coveredBox[3] - 1 ],
+            [ coveredBox[2] - 1, coveredBox[3] - 1 ]
+        ];
+
+        for(const corner of corners) {
+            if(remainingHitTests <= 0) return false;
+
+            if(isRelatedHit(element, hitTest(corner[0], corner[1]))) return true;
+        }
     }
 
     return false;

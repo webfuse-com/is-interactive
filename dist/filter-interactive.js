@@ -1,4 +1,4 @@
-import { checkInteractivity, DEFAULT_INTERACTIVITY_CHECKS, hasModalDialog } from "./check-interactivity.js";
+import { checkInteractivity, DEFAULT_INTERACTIVITY_CHECKS, hasModalDialog, withModalDialogPresence } from "./check-interactivity.js";
 const CASCADING_NON_INTERACTIVITY_CHECKS = /* @__PURE__ */ new Set([
   "disconnected",
   "hidden",
@@ -102,9 +102,7 @@ function filterDOM(liveElement, virtualElement, isRoot, checks, inheritedChecks,
   const descendantChecks = Object.keys(overrides).length ? { ...inheritedChecks, ...pickCascading(overrides) } : inheritedChecks;
   const enabledCascadingChecks = pickEnabledCascading(applicableChecks);
   const skipParentChecks = !liveElement.assignedSlot && enabledCascadingChecks.every((check) => parentVerifiedChecks.has(check));
-  const result = checkInteractivity(liveElement, applicableChecks, {
-    skipParentChecks
-  });
+  const result = checkInteractivity(liveElement, applicableChecks, { skipParentChecks });
   const verifiedChecks = result.isInteractive || !!result.reason && POST_CASCADING_INTERACTIVITY_CHECKS.has(result.reason) ? new Set(enabledCascadingChecks) : /* @__PURE__ */ new Set();
   if (onNonInteractive && !result.isInteractive) {
     onNonInteractive(liveElement, result.reason);
@@ -159,7 +157,8 @@ function filterInteractive(dom, checks = {}, elementOverrideChecks = DEFAULT_FIL
   elementOverrideChecks = new Map(
     Object.entries(elementOverrideChecks).map((entry) => [entry[0].toLowerCase(), entry[1]])
   );
-  if (!hasModalDialog()) {
+  const hasModal = hasModalDialog();
+  if (!hasModal) {
     checks = {
       ...checks,
       modalBlocked: false
@@ -171,7 +170,9 @@ function filterInteractive(dom, checks = {}, elementOverrideChecks = DEFAULT_FIL
   const rescueSelectors = collectRescueSelectors(elementOverrideChecks);
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
   const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
-  filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, /* @__PURE__ */ new Set(), onNonInteractive);
+  withModalDialogPresence(hasModal, () => {
+    filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, /* @__PURE__ */ new Set(), onNonInteractive);
+  });
   return virtualRoot;
 }
 export {

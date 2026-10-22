@@ -1,0 +1,14 @@
+...
+<section>
+    <div id="HOST">
+        <template shadowrootmode="open">
+            <div id="TARGET" style="display: inline-block;">
+                <slot></slot>
+            </div>
+        </template>
+        <button>Click here</button>
+    </div>
+    <script>
+        window.TARGET = document.querySelector("#HOST").shadowRoot.querySelector("#TARGET");
+    </script>
+</section>

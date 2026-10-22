@@ -121,6 +121,10 @@ function filterInteractive(
 >
 > This accounts for custom-style input patterns (e.g., occluded by click-receiver element).
 
+### Shadow DOM
+
+Checks follow the rendered (flat) tree: slotted elements are assessed within their slot, and `filterInteractive` keeps open shadow roots in the virtual DOM. Closed shadow roots cannot be inspected: their contents are not filtered, and content slotted into them is assessed as if placed in the host. Closed `<details>` are handled explicitly.
+
 ### Interactive Demo (pun intended)
 
 Open [demo/demo.html](./demo/demo.html) in a browser.

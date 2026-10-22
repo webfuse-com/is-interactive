@@ -20,6 +20,8 @@ function computeScrollDelta(near: number, far: number, viewport: number): number
 }
 
 function resolveParent(node: Element): Element | null {
+    if(node.assignedSlot) return node.assignedSlot;
+
     if(node.parentElement) return node.parentElement;
 
     const root = node.getRootNode();

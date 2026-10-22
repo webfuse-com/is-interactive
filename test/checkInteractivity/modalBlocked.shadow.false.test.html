@@ -1,0 +1,16 @@
+...
+<section>
+    <div>
+        <button id="TARGET">Click here</button>
+    </div>
+    <div id="HOST">
+        <template shadowrootmode="open">
+            <dialog>
+                <h2>Modal</h2>
+            </dialog>
+        </template>
+    </div>
+    <script>
+        document.querySelector("#HOST").shadowRoot.querySelector("dialog").showModal();
+    </script>
+</section>

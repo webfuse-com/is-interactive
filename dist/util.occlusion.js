@@ -1,42 +1,31 @@
 import { scrollIntoViewSynchronously } from "./util.scroll.js";
-function generateSamplePoints(rect, samples) {
-  const sampleCount = Math.max(1, Math.floor(samples));
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-  const samplePoints = [[centerX, centerY]];
-  if (sampleCount === 1) return samplePoints;
-  if (rect.width < 2 || rect.height < 2) return samplePoints;
-  const aspectRatio = rect.width / Math.max(1, rect.height);
-  const gridY = Math.max(1, Math.min(sampleCount, Math.round(Math.sqrt(sampleCount / Math.max(0.01, aspectRatio)))));
-  const gridX = Math.max(1, Math.min(sampleCount, Math.ceil(sampleCount / gridY)));
-  const top = rect.top + 1;
-  const bottom = rect.bottom - 1;
-  const left = rect.left + 1;
-  const right = rect.right - 1;
-  const stepX = gridX > 1 ? (right - left) / (gridX - 1) : 0;
-  const stepY = gridY > 1 ? (bottom - top) / (gridY - 1) : 0;
-  const seen = /* @__PURE__ */ new Set();
-  seen.add(`${Math.round(centerX)},${Math.round(centerY)}`);
-  const candidates = [];
-  for (let row = 0; row < gridY; row++) {
-    for (let col = 0; col < gridX; col++) {
-      const x = gridX > 1 ? left + col * stepX : centerX;
-      const y = gridY > 1 ? top + row * stepY : centerY;
-      const key = `${Math.round(x)},${Math.round(y)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const dx = x - centerX;
-      const dy = y - centerY;
-      const distanceSquared = dx * dx + dy * dy;
-      candidates.push([x, y, distanceSquared]);
-    }
+const MIN_BOX_SIZE = 1;
+function createBox(left, top, right, bottom) {
+  return right - left >= MIN_BOX_SIZE && bottom - top >= MIN_BOX_SIZE ? [left, top, right, bottom] : null;
+}
+function intersectBoxes(a, b) {
+  return createBox(Math.max(a[0], b[0]), Math.max(a[1], b[1]), Math.min(a[2], b[2]), Math.min(a[3], b[3]));
+}
+function getBoxArea(box) {
+  return (box[2] - box[0]) * (box[3] - box[1]);
+}
+function subtractBox(box, cut) {
+  return [
+    createBox(box[0], box[1], box[2], cut[1]),
+    createBox(box[0], cut[3], box[2], box[3]),
+    createBox(box[0], cut[1], cut[0], cut[3]),
+    createBox(cut[2], cut[1], box[2], cut[3])
+  ].filter((box2) => !!box2);
+}
+function getCoveredBox(occluder, x, y, box) {
+  for (const rect of occluder?.getClientRects() ?? []) {
+    if (x < rect.left || x >= rect.right || y < rect.top || y >= rect.bottom) continue;
+    const coveredBox = intersectBoxes([rect.left, rect.top, rect.right, rect.bottom], box);
+    if (coveredBox) return coveredBox;
   }
-  candidates.sort((a, b) => a[2] - b[2]);
-  for (let i = 0; i < candidates.length; i++) {
-    if (samplePoints.length >= sampleCount) break;
-    samplePoints.push([candidates[i][0], candidates[i][1]]);
-  }
-  return samplePoints;
+  const width = (box[2] - box[0]) / 4;
+  const height = (box[3] - box[1]) / 4;
+  return intersectBoxes([x - width, y - height, x + width, y + height], box) ?? box;
 }
 function composedContains(ancestor, node) {
   const visited = /* @__PURE__ */ new Set();
@@ -44,7 +33,7 @@ function composedContains(ancestor, node) {
     if (node === ancestor) return true;
     if (visited.has(node)) break;
     visited.add(node);
-    const parent = node.parentNode;
+    const parent = node.assignedSlot ?? node.parentNode;
     if (parent) {
       node = parent;
       continue;
@@ -57,16 +46,57 @@ function composedContains(ancestor, node) {
   }
   return false;
 }
+function isRelatedHit(element, hitElement) {
+  return !!hitElement && (hitElement === element || composedContains(element, hitElement) || composedContains(hitElement, element));
+}
 function isElementOnHit(element, rect, samples, viewportWidth, viewportHeight) {
-  const points = generateSamplePoints(rect, samples);
-  for (const point of points) {
-    const x = point[0];
-    const y = point[1];
-    if (x < 0 || y < 0 || x >= viewportWidth || y >= viewportHeight) continue;
-    const stack = document.elementsFromPoint(x, y) ?? [];
-    if (stack.length === 0) continue;
-    const hitElement = stack[0];
-    if (hitElement === element || composedContains(element, hitElement) || composedContains(hitElement, element)) return true;
+  const elementRoot = element.getRootNode();
+  const root = elementRoot instanceof ShadowRoot ? elementRoot : document;
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  if (rect.width < MIN_BOX_SIZE || rect.height < MIN_BOX_SIZE) {
+    return centerX >= 0 && centerY >= 0 && centerX < viewportWidth && centerY < viewportHeight && isRelatedHit(element, root.elementFromPoint(centerX, centerY));
+  }
+  const visibleBox = intersectBoxes(
+    [rect.left, rect.top, rect.right, rect.bottom],
+    [0, 0, viewportWidth, viewportHeight]
+  );
+  if (!visibleBox) return false;
+  const boxes = [visibleBox];
+  const coveredBoxes = [];
+  const hits = /* @__PURE__ */ new Map();
+  let remainingHitTests = Math.max(1, Math.floor(samples));
+  const hitTest = (x, y) => {
+    const key = `${Math.round(x)},${Math.round(y)}`;
+    if (!hits.has(key)) {
+      remainingHitTests--;
+      hits.set(key, root.elementFromPoint(x, y));
+    }
+    return hits.get(key) ?? null;
+  };
+  while (boxes.length && remainingHitTests > 0) {
+    boxes.sort((a, b) => getBoxArea(b) - getBoxArea(a));
+    const box = boxes.shift();
+    const x = (box[0] + box[2]) / 2;
+    const y = (box[1] + box[3]) / 2;
+    const hitElement = hitTest(x, y);
+    if (isRelatedHit(element, hitElement)) return true;
+    const coveredBox = getCoveredBox(hitElement, x, y, box);
+    coveredBoxes.push(coveredBox);
+    boxes.push(...subtractBox(box, coveredBox));
+  }
+  for (const coveredBox of coveredBoxes) {
+    if (coveredBox[2] - coveredBox[0] < 2 || coveredBox[3] - coveredBox[1] < 2) continue;
+    const corners = [
+      [coveredBox[0] + 1, coveredBox[1] + 1],
+      [coveredBox[2] - 1, coveredBox[1] + 1],
+      [coveredBox[0] + 1, coveredBox[3] - 1],
+      [coveredBox[2] - 1, coveredBox[3] - 1]
+    ];
+    for (const corner of corners) {
+      if (remainingHitTests <= 0) return false;
+      if (isRelatedHit(element, hitTest(corner[0], corner[1]))) return true;
+    }
   }
   return false;
 }

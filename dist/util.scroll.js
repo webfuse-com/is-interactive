@@ -8,6 +8,7 @@ function computeScrollDelta(near, far, viewport) {
   return 0;
 }
 function resolveParent(node) {
+  if (node.assignedSlot) return node.assignedSlot;
   if (node.parentElement) return node.parentElement;
   const root = node.getRootNode();
   return root instanceof ShadowRoot ? root.host : null;

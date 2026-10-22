@@ -4,7 +4,7 @@ const OVERFLOW_STYLE_CLIP_OFF_VALUES = ["hidden", "clip"];
 const OVERFLOW_STYLE_SCROLL_OFF_VALUES = ["auto", "scroll"];
 const CONTAINER_STYLE_POSITION_VALUES = ["relative", "absolute", "fixed", "sticky"];
 const OPTION_TAG_NAMES = ["OPTION", "OPTGROUP"];
-const MIN_OCCLUSION_SAMPLES = 6;
+const MIN_OCCLUSION_SAMPLES = 16;
 const MAX_OCCLUSION_SAMPLES = 42;
 const DEFAULT_INTERACTIVITY_CHECKS = {
   disconnected: true,
@@ -46,6 +46,13 @@ function getParentElement(element) {
   }
   return null;
 }
+function isUnrenderedByParent(element, parent) {
+  if (!parent || readProperty(element, "parentElement") !== parent) return false;
+  if (readProperty(parent, "shadowRoot") && !readProperty(element, "assignedSlot")) {
+    return true;
+  }
+  return parent.tagName === "DETAILS" && !parent.open && element !== parent.querySelector(":scope > summary");
+}
 function closestComposed(element, predicate, skipParents = false) {
   let currentElement = element;
   while (currentElement) {
@@ -61,15 +68,31 @@ function getGeometryTarget(element) {
   if (select.multiple || select.size > 1) return element;
   return select;
 }
+let cachedHasModalDialog = null;
+function containsModalDialog(root) {
+  if (root.querySelector("dialog:modal")) return true;
+  for (const element of root.querySelectorAll("*")) {
+    if (element.shadowRoot && containsModalDialog(element.shadowRoot)) return true;
+  }
+  return false;
+}
 function hasModalDialog() {
   try {
-    return !!document.querySelector("dialog:modal");
+    return containsModalDialog(document);
   } catch {
     return false;
   }
 }
+function withModalDialogPresence(hasModal, callback) {
+  cachedHasModalDialog = hasModal;
+  try {
+    return callback();
+  } finally {
+    cachedHasModalDialog = null;
+  }
+}
 function isBlockedByModal(element) {
-  if (!hasModalDialog()) return false;
+  if (!(cachedHasModalDialog ?? hasModalDialog())) return false;
   const hasModalAncestor = closestComposed(element, (element2) => {
     return element2.tagName.toUpperCase() === "DIALOG" && element2.matches(":modal");
   });
@@ -176,13 +199,14 @@ function checkInteractivity(element, checks = {}, options = {}) {
       let currentElement = element;
       while (currentElement) {
         const style2 = getComputedStyle(currentElement);
-        if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden") {
+        const parentElement = getParentElement(currentElement);
+        if (style2.display === "none" || parseFloat(style2.opacity) === 0 || style2.contentVisibility === "hidden" || isUnrenderedByParent(currentElement, parentElement)) {
           return {
             isInteractive: false,
             reason: "unrendered"
           };
         }
-        currentElement = options.skipParentChecks ? null : getParentElement(currentElement);
+        currentElement = options.skipParentChecks ? null : parentElement;
       }
     }
   }
@@ -336,5 +360,6 @@ function checkInteractivity(element, checks = {}, options = {}) {
 export {
   DEFAULT_INTERACTIVITY_CHECKS,
   checkInteractivity,
-  hasModalDialog
+  hasModalDialog,
+  withModalDialogPresence
 };

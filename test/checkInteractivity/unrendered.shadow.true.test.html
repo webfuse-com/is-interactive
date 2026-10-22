@@ -1,0 +1,11 @@
+...
+<section>
+    <div id="HOST">
+        <template shadowrootmode="open">
+            <button id="TARGET">Click here</button>
+        </template>
+    </div>
+    <script>
+        window.TARGET = document.querySelector("#HOST").shadowRoot.querySelector("#TARGET");
+    </script>
+</section>

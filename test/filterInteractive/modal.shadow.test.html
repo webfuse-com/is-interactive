@@ -1,0 +1,14 @@
+...
+<div id="TARGET">
+    <input type="text">
+    <div id="HOST">
+        <template shadowrootmode="open">
+            <dialog>
+                <button>Click here</button>
+            </dialog>
+        </template>
+    </div>
+    <script>
+        document.querySelector("#HOST").shadowRoot.querySelector("dialog").showModal();
+    </script>
+</div>

@@ -19,6 +19,29 @@ const TESTS = [
         name: "modal"
     },
     {
+        name: "modal.shadow"
+    },
+    {
+        name: "details",
+        elementOverrideChecks: {   // only 'unrendered' can filter buttons
+            "button": {
+                clipped: false,
+                collapsed: false,
+                occluded: false
+            }
+        }
+    },
+    {
+        name: "unassigned",
+        elementOverrideChecks: {   // only 'unrendered' can filter buttons
+            "button": {
+                clipped: false,
+                collapsed: false,
+                occluded: false
+            }
+        }
+    },
+    {
         name: "skip-parent.nested"
     },
     {
