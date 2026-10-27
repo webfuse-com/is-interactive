@@ -91,8 +91,8 @@ function containsDeep(root: Element | ShadowRoot, selector: string): boolean {
     return false;
 }
 
-function cloneWithShadow(node: Element): Element {
-    const clone: Element = node.cloneNode(false) as Element;
+function cloneWithShadow(node: Element, targetDocument: Document): Element {
+    const clone: Element = targetDocument.importNode(node, false) as Element;
     const shadow: ShadowRoot | null = node.shadowRoot;
 
     if(shadow) {
@@ -102,15 +102,15 @@ function cloneWithShadow(node: Element): Element {
         });
 
         for(let child: Element | null = shadow.firstElementChild; child; child = child.nextElementSibling) {
-            clonedShadow.appendChild(cloneWithShadow(child));
+            clonedShadow.appendChild(cloneWithShadow(child, targetDocument));
         }
     }
 
     for(const child of node.childNodes) {
         if(child.nodeType === Node.ELEMENT_NODE) {
-            clone.appendChild(cloneWithShadow(child as Element));
+            clone.appendChild(cloneWithShadow(child as Element, targetDocument));
         } else {
-            clone.appendChild(child.cloneNode(true));
+            clone.appendChild(targetDocument.importNode(child, true));
         }
     }
 
@@ -274,7 +274,7 @@ export function filterInteractive(
 
     const virtualRoot: Element = virtualDOM
         ? ((virtualDOM instanceof Document) ? virtualDOM.documentElement : virtualDOM)
-        : cloneWithShadow(liveRoot);
+        : cloneWithShadow(liveRoot, document.implementation.createHTMLDocument(""));
 
     withModalDialogPresence(hasModal, () => {
         filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, new Set(), onNonInteractive);

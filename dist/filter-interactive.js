@@ -67,8 +67,8 @@ function containsDeep(root, selector) {
   }
   return false;
 }
-function cloneWithShadow(node) {
-  const clone = node.cloneNode(false);
+function cloneWithShadow(node, targetDocument) {
+  const clone = targetDocument.importNode(node, false);
   const shadow = node.shadowRoot;
   if (shadow) {
     const clonedShadow = clone.attachShadow({
@@ -76,14 +76,14 @@ function cloneWithShadow(node) {
       serializable: true
     });
     for (let child = shadow.firstElementChild; child; child = child.nextElementSibling) {
-      clonedShadow.appendChild(cloneWithShadow(child));
+      clonedShadow.appendChild(cloneWithShadow(child, targetDocument));
     }
   }
   for (const child of node.childNodes) {
     if (child.nodeType === Node.ELEMENT_NODE) {
-      clone.appendChild(cloneWithShadow(child));
+      clone.appendChild(cloneWithShadow(child, targetDocument));
     } else {
-      clone.appendChild(child.cloneNode(true));
+      clone.appendChild(targetDocument.importNode(child, true));
     }
   }
   return clone;
@@ -169,7 +169,7 @@ function filterInteractive(dom, checks = {}, elementOverrideChecks = DEFAULT_FIL
   }
   const rescueSelectors = collectRescueSelectors(elementOverrideChecks);
   const liveRoot = dom instanceof Document ? dom.documentElement : dom;
-  const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot);
+  const virtualRoot = virtualDOM ? virtualDOM instanceof Document ? virtualDOM.documentElement : virtualDOM : cloneWithShadow(liveRoot, document.implementation.createHTMLDocument(""));
   withModalDialogPresence(hasModal, () => {
     filterDOM(liveRoot, virtualRoot, true, checks, {}, elementOverrideChecks, rescueSelectors, /* @__PURE__ */ new Set(), onNonInteractive);
   });
